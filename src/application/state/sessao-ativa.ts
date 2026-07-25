@@ -13,20 +13,33 @@ import { appModule } from "@/interface/configuration/module/app.module";
 /** Versão do esquema salvo. Snapshots de versões anteriores (formato de
     "modos" musculação/cardio, sem campo `versao`) são descartados — a sessão
     ativa é transitória e não justifica migração. */
-export const VERSAO_SESSAO_SALVA = 2;
+export const VERSAO_SESSAO_SALVA = 4;
+
+export interface ConfiguracaoExercicioSessao {
+  series: number;
+  repeticoes: number;
+  usaCarga: boolean;
+  descansoSegundos: number;
+}
 
 /** Item da sessão em formato serializável (Set → array). Espelha a posição
     de `ficha.itens` — a identidade do item é o índice. */
 export type SessaoItemSalvo =
   | {
+      sessaoItemId?: string;
       tipo: "exercicio";
       exercicioId: string;
+      /** Ausente em item adicionado e em snapshots legados v2. */
+      exercicioPlanejadoId?: string;
+      origem?: "planejado" | "adicionado";
+      configuracao?: ConfiguracaoExercicioSessao;
       series: RegistroSerie[];
       nota: string;
       concluidas: number[];
       visitado: boolean;
     }
   | {
+      sessaoItemId?: string;
       tipo: "cardio";
       registro: RegistroCardio;
       concluido: boolean;
@@ -35,7 +48,7 @@ export type SessaoItemSalvo =
 
 /** Snapshot completo do treino em execução. */
 export interface SessaoTreinoSalva {
-  versao: typeof VERSAO_SESSAO_SALVA;
+  versao: 2 | 3 | typeof VERSAO_SESSAO_SALVA;
   fichaId: string;
   iniciadoEm: string;
   indiceAtual: number;
@@ -48,7 +61,10 @@ export async function carregarSessaoAtiva(): Promise<SessaoTreinoSalva | null> {
     const salvo = await appModule.armazenamento.obter(STORAGE_KEYS.SESSAO_ATIVA);
     if (!salvo) return null;
     const dados = JSON.parse(salvo) as { versao?: number; itens?: unknown };
-    if (dados.versao !== VERSAO_SESSAO_SALVA || !Array.isArray(dados.itens)) {
+    if (
+      (dados.versao !== 2 && dados.versao !== 3 && dados.versao !== VERSAO_SESSAO_SALVA) ||
+      !Array.isArray(dados.itens)
+    ) {
       await limparSessaoAtiva();
       return null;
     }

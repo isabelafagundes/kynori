@@ -49,11 +49,17 @@ export class UsuarioManager {
     return this.usuario;
   }
 
-  definirUsuario(dados: { nome: string; avatarEmoji: string }): Usuario {
+  definirUsuario(dados: {
+    nome: string;
+    avatarEmoji: string;
+    metaSemanal?: number;
+  }): Usuario {
     const usuario: Usuario = {
       nome: dados.nome.trim(),
       avatarEmoji: dados.avatarEmoji,
       criadoEm: this.usuario?.criadoEm ?? new Date().toISOString(),
+      // Edição de perfil não mexe na meta: sem o campo, preserva o que havia.
+      metaSemanal: dados.metaSemanal ?? this.usuario?.metaSemanal,
     };
     this.usuario = usuario;
     void this.salvar(usuario);
@@ -67,6 +73,7 @@ export class UsuarioManager {
           nome: usuario.nome.trim(),
           avatarEmoji: usuario.avatarEmoji,
           criadoEm: usuario.criadoEm,
+          metaSemanal: usuario.metaSemanal,
         }
       : null;
 
@@ -93,6 +100,8 @@ export class UsuarioManager {
         nome: dados.nome,
         avatarEmoji: dados.avatarEmoji ?? "🙂",
         criadoEm: dados.criadoEm ?? new Date().toISOString(),
+        metaSemanal:
+          typeof dados.metaSemanal === "number" ? dados.metaSemanal : undefined,
       };
     } catch {
       return null;

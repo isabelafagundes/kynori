@@ -19,6 +19,9 @@ import { OverlayFinalizado, type EtapaResultado } from "./OverlayFinalizado";
 import { OverlayConfirmarCancelar } from "./OverlayConfirmarCancelar";
 import { OverlayHistoricoSerie } from "./OverlayHistoricoSerie";
 import { OverlayGraficoProgressao } from "./OverlayGraficoProgressao";
+import { OverlayTrocarExercicio } from "./OverlayTrocarExercicio";
+import { OverlayAdicionarExercicio } from "./OverlayAdicionarExercicio";
+import { OverlayPularExercicio } from "./OverlayPularExercicio";
 import { useSessaoTreino } from "./hooks/useSessaoTreino";
 import { useTimerDescanso } from "./hooks/useTimerDescanso";
 import { useInterceptarVoltar } from "./hooks/useInterceptarVoltar";
@@ -46,7 +49,13 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
   const [serieHistoricoAlvo, setSerieHistoricoAlvo] = useState<number | null>(null);
   const [graficoAberto, setGraficoAberto] = useState(false);
   const [mapaMuscularAberto, setMapaMuscularAberto] = useState(false);
-  const [desfazerAlvo, setDesfazerAlvo] = useState<{ indiceSerie: number; texto: string } | null>(null);
+  const [trocarExercicioAberto, setTrocarExercicioAberto] = useState(false);
+  const [adicionarExercicioAberto, setAdicionarExercicioAberto] = useState(false);
+  const [pularExercicioAberto, setPularExercicioAberto] = useState(false);
+  const [desfazerAlvo, setDesfazerAlvo] = useState<{
+    texto: string;
+    executar: () => void;
+  } | null>(null);
   const [finalizadoAberto, setFinalizadoAberto] = useState(false);
   const [registroFinalizado, setRegistroFinalizado] = useState<RegistroTreino | null>(null);
   const [etapaResultado, setEtapaResultado] = useState<EtapaResultado>("celebracao");
@@ -66,6 +75,9 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     if (serieHistoricoAlvo !== null) return setSerieHistoricoAlvo(null);
     if (graficoAberto) return setGraficoAberto(false);
     if (mapaMuscularAberto) return setMapaMuscularAberto(false);
+    if (trocarExercicioAberto) return setTrocarExercicioAberto(false);
+    if (adicionarExercicioAberto) return setAdicionarExercicioAberto(false);
+    if (pularExercicioAberto) return setPularExercicioAberto(false);
     if (confirmarCancelarAberto) return setConfirmarCancelarAberto(false);
     setConfirmarCancelarAberto(true);
   });
@@ -96,6 +108,19 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
   const nomeAtual = statusAtual ? nomeDoItem(statusAtual, catalogo, tiposCardio).nome : "";
   const exercicioCatalogo = catalogo.find(
     (exercicio) => exercicio.id === exercicioAtual?.exercicioId
+  );
+  const exercicioPlanejadoCatalogo = catalogo.find(
+    (exercicio) => exercicio.id === exercicioAtual?.exercicioPlanejadoId
+  );
+  const exercicioFoiSubstituido =
+    exercicioAtual?.exercicioPlanejadoId !== undefined &&
+    exercicioAtual.exercicioId !== exercicioAtual.exercicioPlanejadoId;
+  const exercicioIdsIndisponiveis = useMemo(
+    () =>
+      sessao.itens.flatMap((item) =>
+        item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []
+      ),
+    [sessao.itens]
   );
   const grupoMuscular = exercicioCatalogo?.grupoMuscular;
   const ativacoes = exercicioCatalogo ? ativacoesDoExercicio(exercicioCatalogo) : [];
@@ -162,12 +187,19 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
   };
 
   const concluirSerie = (indiceSerie: number) => {
+    const indiceItem = sessao.indiceAtual;
     const jaConcluida = exercicioAtual?.concluidas.has(indiceSerie);
-    sessao.marcarConcluida(sessao.indiceAtual, indiceSerie);
+    sessao.marcarConcluida(indiceItem, indiceSerie);
     if (!jaConcluida) {
       void appModule.feedbackTatil.impactoMedio();
       if (segundosDescanso > 0) timer.reiniciar();
-      setDesfazerAlvo({ indiceSerie, texto: `Série ${indiceSerie + 1} concluída` });
+      setDesfazerAlvo({
+        texto: `Série ${indiceSerie + 1} concluída`,
+        executar: () => {
+          sessao.marcarConcluida(indiceItem, indiceSerie);
+          timer.resetar();
+        },
+      });
     }
   };
 
@@ -178,10 +210,124 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     sessao.marcarCardioConcluido(id);
   };
 
+  const trocarExercicio = (exercicioId: string, confirmarDescarte = false) => {
+    const resultado = sessao.trocarExercicio(
+      sessao.indiceAtual,
+      exercicioId,
+      confirmarDescarte
+    );
+    if (resultado === "trocado") {
+      timer.resetar();
+      void appModule.feedbackTatil.impactoMedio();
+    }
+    return resultado;
+  };
+
+  const restaurarExercicio = (confirmarDescarte = false) => {
+    const resultado = sessao.restaurarExercicioPlanejado(
+      sessao.indiceAtual,
+      confirmarDescarte
+    );
+    if (resultado === "trocado") {
+      timer.resetar();
+      void appModule.feedbackTatil.impactoMedio();
+    }
+    return resultado;
+  };
+
+  const adicionarExercicio = (
+    exercicioId: string,
+    configuracao: Parameters<typeof sessao.adicionarExercicioApos>[2]
+  ) => {
+    const resultado = sessao.adicionarExercicioApos(
+      sessao.itens.length === 0 ? -1 : sessao.indiceAtual,
+      exercicioId,
+      configuracao
+    );
+    if (resultado === "adicionado") {
+      void appModule.feedbackTatil.impactoMedio();
+    }
+    return resultado;
+  };
+
+  const confirmarPularExercicio = () => {
+    const alteracao = sessao.pularExercicio(sessao.indiceAtual);
+    if (!alteracao) return;
+    timer.resetar();
+    setPularExercicioAberto(false);
+    setDesfazerAlvo({
+      texto:
+        alteracao.modo === "interrompido"
+          ? "Exercício encerrado por hoje"
+          : "Exercício pulado hoje",
+      executar: () => sessao.desfazerPularExercicio(alteracao),
+    });
+    void appModule.feedbackTatil.impactoMedio();
+  };
+
   if (sessao.itens.length === 0) {
     return (
-      <div className="min-h-[100dvh] px-4 py-8 text-center text-sm text-texto-secundario">
-        Esta ficha ainda não tem exercícios ou cardio.
+      <div className="flex min-h-[100dvh] flex-col text-texto-primario">
+        <HeaderExecucao
+          nomeFicha={ficha.nome}
+          iconeFicha={ficha.icone}
+          emojiFicha={ficha.emoji}
+          iniciadoEm={sessao.iniciadoEm}
+          progresso={sessao.progresso}
+          temExercicioAtual={false}
+          exercicioIniciado={false}
+          aoTrocarExercicio={() => {}}
+          aoPularExercicio={() => {}}
+          aoAdicionarExercicio={() => setAdicionarExercicioAberto(true)}
+          aoFinalizar={solicitarFinalizacao}
+          aoAbandonar={() => setConfirmarCancelarAberto(true)}
+        />
+        <main className="grid flex-1 place-items-center px-5 py-10">
+          <div className="w-full max-w-[420px] text-center">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-acento-suave">
+              <Icone nome="check" tamanho={24} />
+            </div>
+            <h1 className="mt-4 font-display text-2xl font-semibold">Nenhum item restante hoje</h1>
+            <p className="mt-2 text-sm leading-relaxed text-texto-secundario">
+              Você pode adicionar outro exercício ou finalizar o treino. A ficha original permanece intacta.
+            </p>
+            <div className="mt-6 grid gap-2">
+              <Botao ocuparLarguraTotal onClick={() => setAdicionarExercicioAberto(true)}>
+                Adicionar exercício
+              </Botao>
+              <Botao variante="secundario" ocuparLarguraTotal onClick={solicitarFinalizacao}>
+                Finalizar treino
+              </Botao>
+            </div>
+          </div>
+        </main>
+        {adicionarExercicioAberto ? (
+          <OverlayAdicionarExercicio
+            exercicios={catalogo}
+            exercicioIdsIndisponiveis={[]}
+            aoAdicionar={adicionarExercicio}
+            aoFechar={() => setAdicionarExercicioAberto(false)}
+          />
+        ) : null}
+        <OverlayConfirmarCancelar
+          aberto={confirmarCancelarAberto}
+          aoContinuar={() => setConfirmarCancelarAberto(false)}
+          aoDescartar={descartarTreino}
+        />
+        <OverlayFinalizado
+          aberto={finalizadoAberto}
+          registro={registroFinalizado}
+          ficha={ficha}
+          catalogo={catalogo}
+          etapa={etapaResultado}
+          aoMudarEtapa={setEtapaResultado}
+          aoConcluir={aoVoltar}
+        />
+        <ToastDesfazer
+          mensagem={desfazerAlvo?.texto ?? null}
+          aoDesfazer={() => desfazerAlvo?.executar()}
+          aoFechar={() => setDesfazerAlvo(null)}
+        />
       </div>
     );
   }
@@ -210,6 +356,11 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
         emojiFicha={ficha.emoji}
         iniciadoEm={sessao.iniciadoEm}
         progresso={sessao.progresso}
+        temExercicioAtual={exercicioAtual !== undefined}
+        exercicioIniciado={(exercicioAtual?.concluidas.size ?? 0) > 0}
+        aoTrocarExercicio={() => setTrocarExercicioAberto(true)}
+        aoPularExercicio={() => setPularExercicioAberto(true)}
+        aoAdicionarExercicio={() => setAdicionarExercicioAberto(true)}
         aoFinalizar={solicitarFinalizacao}
         aoAbandonar={() => setConfirmarCancelarAberto(true)}
       />
@@ -243,6 +394,16 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
                       ? "Cardio · valores da última sessão pré-preenchidos"
                       : "Cardio"}
                 </p>
+                {exercicioFoiSubstituido && exercicioPlanejadoCatalogo ? (
+                  <p className="mt-1 inline-flex rounded-full bg-acento-suave px-2.5 py-1 text-xs text-texto-secundario">
+                    Substitui {exercicioPlanejadoCatalogo.nome} somente hoje
+                  </p>
+                ) : null}
+                {exercicioAtual?.origem === "adicionado" ? (
+                  <p className="mt-1 inline-flex rounded-full bg-acento-suave px-2.5 py-1 text-xs text-texto-secundario">
+                    Adicionado somente hoje
+                  </p>
+                ) : null}
 
                 {timerVisivel ? (
                   <div className="mt-3">
@@ -416,6 +577,40 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
         </div>
       )}
 
+      {trocarExercicioAberto && exercicioAtual && exercicioCatalogo ? (
+        <OverlayTrocarExercicio
+          aberto={trocarExercicioAberto}
+          exercicioAtual={exercicioCatalogo}
+          exercicioPlanejado={exercicioPlanejadoCatalogo}
+          exercicios={catalogo}
+          exercicioIdsIndisponiveis={exercicioIdsIndisponiveis}
+          iniciado={exercicioAtual.concluidas.size > 0}
+          aoTrocar={trocarExercicio}
+          aoRestaurar={exercicioPlanejadoCatalogo ? restaurarExercicio : undefined}
+          aoFechar={() => setTrocarExercicioAberto(false)}
+        />
+      ) : null}
+
+      {adicionarExercicioAberto ? (
+        <OverlayAdicionarExercicio
+          exercicios={catalogo}
+          exercicioIdsIndisponiveis={exercicioIdsIndisponiveis}
+          grupoInicial={grupoMuscular}
+          aoAdicionar={adicionarExercicio}
+          aoFechar={() => setAdicionarExercicioAberto(false)}
+        />
+      ) : null}
+
+      {pularExercicioAberto && exercicioAtual ? (
+        <OverlayPularExercicio
+          nomeExercicio={nomeAtual}
+          seriesConcluidas={exercicioAtual.concluidas.size}
+          seriesTotal={exercicioAtual.series.length}
+          aoConfirmar={confirmarPularExercicio}
+          aoFechar={() => setPularExercicioAberto(false)}
+        />
+      ) : null}
+
       <OverlayConfirmarFinalizar
         aberto={confirmarFinalizarAberto}
         resumo={sessao.resumoFinalizacao()}
@@ -451,12 +646,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
       <OverlayFinalizado aberto={finalizadoAberto} registro={registroFinalizado} ficha={ficha} catalogo={catalogo} etapa={etapaResultado} aoMudarEtapa={setEtapaResultado} aoConcluir={aoVoltar} />
       <ToastDesfazer
         mensagem={desfazerAlvo?.texto ?? null}
-        aoDesfazer={() => {
-          if (desfazerAlvo) {
-            sessao.marcarConcluida(sessao.indiceAtual, desfazerAlvo.indiceSerie);
-            timer.resetar();
-          }
-        }}
+        aoDesfazer={() => desfazerAlvo?.executar()}
         aoFechar={() => setDesfazerAlvo(null)}
       />
     </div>

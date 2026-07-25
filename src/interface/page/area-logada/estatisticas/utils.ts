@@ -10,15 +10,17 @@ import { META_METRICA_CARDIO, resolverTipoCardio } from "@/domain/tipos";
 import { criarIdGraficoCardio } from "@/interface/widget/grafico/cardioGraficoId";
 
 /** Retorna a data ISO (YYYY-MM-DD) a partir de um Date local */
-function toISODate(data: Date): string {
+export function toISODate(data: Date): string {
   const ano = data.getFullYear();
   const mes = String(data.getMonth() + 1).padStart(2, "0");
   const dia = String(data.getDate()).padStart(2, "0");
   return `${ano}-${mes}-${dia}`;
 }
 
-/** Início da semana (segunda-feira, 00:00 local) que contém a data dada. */
-function inicioDaSemana(data: Date): Date {
+/** Início da semana (segunda-feira, 00:00 local) que contém a data dada.
+    Definição única de "semana" do app — usada pelo volume semanal e pela
+    contagem semanal da home. */
+export function inicioDaSemana(data: Date): Date {
   const d = new Date(data);
   d.setHours(0, 0, 0, 0);
   const diaSegundaBase = (d.getDay() + 6) % 7; // 0 = segunda, 6 = domingo
@@ -142,6 +144,36 @@ export function construirDadosFrequencia(
     dataInicio: toISODate(dataInicio),
     dataFim: toISODate(dataFim),
   };
+}
+
+/**
+ * Dias distintos com treino na semana calendário (segunda a domingo) que
+ * contém `hoje`.
+ *
+ * Antes a home contava os últimos 7 dias corridos e rotulava "esta semana" —
+ * uma janela deslizante disfarçada de semana. Com a meta semanal explícita a
+ * diferença fica visível (o número cairia sozinho na virada de semana sem que
+ * nada tivesse mudado), então a contagem passou a ser a semana de verdade,
+ * usando o mesmo `inicioDaSemana` do volume semanal.
+ *
+ * Conta DIAS, não sessões: dois treinos no mesmo dia valem 1, coerente com a
+ * meta ser expressa em "dias por semana".
+ */
+export function contarDiasComTreinoNaSemana(
+  dados: DadosFrequencia,
+  hoje: Date = new Date(),
+): number {
+  const inicio = inicioDaSemana(hoje);
+  const fim = new Date(hoje);
+  fim.setHours(0, 0, 0, 0);
+
+  let total = 0;
+  for (const registro of dados.registros) {
+    if (!registro.completou) continue;
+    const data = new Date(`${registro.data}T00:00:00`);
+    if (data >= inicio && data <= fim) total++;
+  }
+  return total;
 }
 
 export interface ProgressaoExercicio {

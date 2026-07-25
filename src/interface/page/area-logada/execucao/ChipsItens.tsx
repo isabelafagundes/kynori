@@ -32,7 +32,7 @@ export function ChipsItens({ itens, catalogo, tiposCardio, aoIrPara }: Proprieda
 
         return (
           <button
-            key={item.indice}
+            key={item.sessaoItemId}
             type="button"
             ref={ativo ? chipAtivoRef : undefined}
             onClick={() => aoIrPara(item.indice)}

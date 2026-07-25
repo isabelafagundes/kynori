@@ -13,6 +13,7 @@ import { useToast } from "@/interface/widget/toast";
 import { ModalCopiarPrograma } from "@/interface/widget/modal/ModalCopiarPrograma";
 import { ModalConfirmacao } from "@/interface/widget/modal/ModalConfirmacao";
 import { MenuAcoes } from "@/interface/widget/menu/MenuAcoes";
+import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 import type { OpcoesNavegacao } from "@/interface/rota/useNavegar";
 import { useGuardaSaida } from "./useGuardaSaida";
 
@@ -37,6 +38,8 @@ export function EditorProgramaPage({
   aoNavegar,
 }: PropriedadesEditorProgramaPage) {
   const { showError } = useToast();
+  const alvoNome = useAlvoTutorial("programa-nome");
+  const alvoNovaFicha = useAlvoTutorial("programa-nova-ficha");
   const [, setPrograma] = useState<Programa | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -87,6 +90,44 @@ export function EditorProgramaPage({
     const cancelarInscricao = stateManagerRepository.inscrever(carregarDados);
     return cancelarInscricao;
   }, [programaId]);
+
+  /**
+   * Garante que o programa exista no repositório e devolve o id.
+   *
+   * Antes, "Nova ficha" só aparecia depois de salvar — a tela cobrava um
+   * "Criar Programa" no meio do caminho só para liberar o resto do formulário.
+   * O modal já criava o programa em silêncio nesse caso; aqui isso virou o
+   * comportamento único, e a seção de fichas fica disponível desde o começo.
+   *
+   * Retorna null (com aviso) quando ainda falta o nome — único dado
+   * obrigatório para persistir.
+   */
+  const garantirProgramaPersistido = (): string | null => {
+    if (idParaUsar) return idParaUsar;
+
+    if (!nome.trim()) {
+      showError("Digite um nome para o programa antes de criar fichas.");
+      return null;
+    }
+
+    const novoPrograma = stateManagerRepository.adicionarPrograma({
+      nome: nome.trim(),
+      descricao: descricao.trim(),
+      ativo,
+      fichaIds: [],
+    });
+
+    setProgramaTempId(novoPrograma.id);
+    // O que está no formulário acabou de ser persistido: sem reajustar o
+    // baseline, sair da tela dispararia "descartar alterações?" à toa.
+    setBaseline(assinaturaPrograma(nome, descricao, ativo));
+    // Passar a rota a apontar para o programa criado faz o `programaId` virar
+    // a fonte da verdade. Sem isso o efeito de recarga cai no ramo "novo
+    // programa" e reescreve o toggle de ativo por baixo do formulário.
+    aoNavegar("editarPrograma", { id: novoPrograma.id }, { substituir: true });
+
+    return novoPrograma.id;
+  };
 
   // Handlers
   const handleSalvar = () => {
@@ -167,7 +208,7 @@ export function EditorProgramaPage({
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="px-5 py-4 pb-6 space-y-6">
           {/* Nome + atalho para copiar de um programa existente */}
-          <div className="space-y-2">
+          <div ref={alvoNome} className="space-y-2">
             <Input
               label="Nome"
               tipo="text"
@@ -229,31 +270,33 @@ export function EditorProgramaPage({
                   Fichas do programa
                 </span>
               </div>
-              {programaPersistido && idParaUsar && (
-                <Botao
-                  variante="fantasma"
-                  tamanho="compacto"
-                  icone={<Icone nome="mais" tamanho={14} />}
-                  onClick={() => setModalNovaFicha(true)}
-                >
-                  Nova ficha
-                </Botao>
-              )}
+              {/* Sempre disponível: o programa é persistido em silêncio no
+                  primeiro uso, sem cobrar um "salvar" no meio do formulário. */}
+              <Botao
+                ref={alvoNovaFicha}
+                variante="fantasma"
+                tamanho="compacto"
+                icone={<Icone nome="mais" tamanho={14} />}
+                onClick={() => setModalNovaFicha(true)}
+              >
+                Nova ficha
+              </Botao>
             </div>
 
-            {programaPersistido && idParaUsar ? (
-              (() => {
-                const fichasDoPrograma = stateManagerRepository.obterFichasDoPrograma(idParaUsar);
-                if (fichasDoPrograma.length === 0) {
-                  return (
-                    <div className="rounded-2xl border border-dashed border-borda bg-superficie-suave/60 px-4 py-6 text-center">
-                      <p className="text-sm text-texto-secundario">
-                        Nenhuma ficha ainda. Adicione a primeira com “Nova ficha”.
-                      </p>
-                    </div>
-                  );
-                }
+            {(() => {
+              const fichasDoPrograma = idParaUsar
+                ? stateManagerRepository.obterFichasDoPrograma(idParaUsar)
+                : [];
+              if (fichasDoPrograma.length === 0) {
                 return (
+                  <div className="rounded-2xl border border-dashed border-borda bg-superficie-suave/60 px-4 py-6 text-center">
+                    <p className="text-sm text-texto-secundario">
+                      Nenhuma ficha ainda. Adicione a primeira com “Nova ficha”.
+                    </p>
+                  </div>
+                );
+              }
+              return (
                   <div className="overflow-hidden rounded-2xl border border-borda bg-superficie">
                     {fichasDoPrograma.map((ficha, i) => (
                       <div
@@ -291,31 +334,9 @@ export function EditorProgramaPage({
                         />
                       </div>
                     ))}
-                  </div>
-                );
-              })()
-            ) : (
-              <div className="rounded-2xl border border-dashed border-borda bg-superficie-suave/60 px-4 py-5 text-center">
-                <p className="text-sm text-texto-secundario">
-                  Salve o programa para começar a montar as fichas.
-                </p>
-                <Botao
-                  variante="secundario"
-                  tamanho="compacto"
-                  className="mt-3"
-                  icone={<Icone nome="mais" tamanho={14} />}
-                  onClick={() => {
-                    if (!nome.trim()) {
-                      showError("Digite um nome para o programa antes de criar fichas.");
-                      return;
-                    }
-                    setModalNovaFicha(true);
-                  }}
-                >
-                  Criar nova ficha
-                </Botao>
-              </div>
-            )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -403,24 +424,8 @@ export function EditorProgramaPage({
               <button
                 type="button"
                 onClick={() => {
-                  // Salvar o programa se ainda não foi salvo
-                  if (!idParaUsar && !nome.trim()) {
-                    showError("Digite um nome para o programa primeiro.");
-                    return;
-                  }
-
-                  let programaIdFinal = idParaUsar;
-                  if (!programaIdFinal) {
-                    const novoPrograma = stateManagerRepository.adicionarPrograma({
-                      nome: nome.trim(),
-                      descricao: descricao.trim(),
-                      ativo,
-                      fichaIds: [],
-                    });
-                    setProgramaTempId(novoPrograma.id);
-                    programaIdFinal = novoPrograma.id;
-                    aoNavegar("editarPrograma", { id: programaIdFinal }, { substituir: true });
-                  }
+                  const programaIdFinal = garantirProgramaPersistido();
+                  if (!programaIdFinal) return;
 
                   setModalNovaFicha(false);
                   aoNavegar("criarFicha", { programaId: programaIdFinal });
@@ -438,23 +443,7 @@ export function EditorProgramaPage({
               <button
                 type="button"
                 onClick={() => {
-                  // Salvar o programa se ainda não foi salvo
-                  if (!idParaUsar && !nome.trim()) {
-                    showError("Digite um nome para o programa primeiro.");
-                    return;
-                  }
-
-                  let programaIdFinal = idParaUsar;
-                  if (!programaIdFinal) {
-                    const novoPrograma = stateManagerRepository.adicionarPrograma({
-                      nome: nome.trim(),
-                      descricao: descricao.trim(),
-                      ativo,
-                      fichaIds: [],
-                    });
-                    setProgramaTempId(novoPrograma.id);
-                    programaIdFinal = novoPrograma.id;
-                  }
+                  if (!garantirProgramaPersistido()) return;
 
                   setModalNovaFicha(false);
                   setModalSelecionarFicha(true);

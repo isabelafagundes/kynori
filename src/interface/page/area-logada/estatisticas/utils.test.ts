@@ -12,7 +12,9 @@ import {
   calcularTreinosNoMes,
   calcularVolumeSemanal,
   construirDadosFrequencia,
+  contarDiasComTreinoNaSemana,
   filtrarProgressaoExercicios,
+  inicioDaSemana,
 } from "./utils";
 
 function treino(parcial: Partial<RegistroTreino>): RegistroTreino {
@@ -79,6 +81,73 @@ describe("estatisticas utils", () => {
       { data: "2026-05-22", completou: false, fichasCompletas: undefined },
       { data: "2026-05-23", completou: true, fichasCompletas: ["b", "c"] },
     ]);
+  });
+
+  /* ── Contagem semanal (denominador da meta na home) ────────────────
+     Semana calendário de segunda a domingo. A virada de semana é o ponto
+     onde isso quebra em silêncio, então cada limite tem teste. */
+  describe("contarDiasComTreinoNaSemana", () => {
+    // 2026-05-18 é uma segunda-feira; 2026-05-24, o domingo que fecha a semana.
+    function frequenciaDe(historico: RegistroTreino[], hoje: Date) {
+      return construirDadosFrequencia(historico, 60, hoje);
+    }
+
+    it("ancora a semana na segunda-feira", () => {
+      expect(inicioDaSemana(new Date("2026-05-21T15:00:00"))).toEqual(
+        new Date("2026-05-18T00:00:00"),
+      );
+      // Domingo pertence à semana que começou na segunda anterior.
+      expect(inicioDaSemana(new Date("2026-05-24T15:00:00"))).toEqual(
+        new Date("2026-05-18T00:00:00"),
+      );
+    });
+
+    it("conta apenas os dias da semana calendario corrente", () => {
+      const hoje = new Date("2026-05-21T12:00:00"); // quinta
+      const historico = [
+        treino({ iniciadoEm: "2026-05-17T10:00:00" }), // domingo anterior — fora
+        treino({ iniciadoEm: "2026-05-18T10:00:00" }), // segunda — dentro
+        treino({ iniciadoEm: "2026-05-20T10:00:00" }), // quarta — dentro
+      ];
+
+      expect(contarDiasComTreinoNaSemana(frequenciaDe(historico, hoje), hoje)).toBe(2);
+    });
+
+    it("zera na virada de semana em vez de arrastar os dias anteriores", () => {
+      const historico = [
+        treino({ iniciadoEm: "2026-05-20T10:00:00" }), // quarta
+        treino({ iniciadoEm: "2026-05-22T10:00:00" }), // sexta
+      ];
+
+      const domingo = new Date("2026-05-24T12:00:00");
+      const segundaSeguinte = new Date("2026-05-25T12:00:00");
+
+      expect(contarDiasComTreinoNaSemana(frequenciaDe(historico, domingo), domingo)).toBe(2);
+      // A janela deslizante de 7 dias ainda contaria 2 aqui — a semana nova não.
+      expect(
+        contarDiasComTreinoNaSemana(frequenciaDe(historico, segundaSeguinte), segundaSeguinte),
+      ).toBe(0);
+    });
+
+    it("conta dias, nao sessoes: dois treinos no mesmo dia valem 1", () => {
+      const hoje = new Date("2026-05-21T12:00:00");
+      const historico = [
+        treino({ fichaId: "a", iniciadoEm: "2026-05-20T09:00:00" }),
+        treino({ fichaId: "b", iniciadoEm: "2026-05-20T19:00:00" }),
+      ];
+
+      expect(contarDiasComTreinoNaSemana(frequenciaDe(historico, hoje), hoje)).toBe(1);
+    });
+
+    it("ignora dias futuros da semana corrente", () => {
+      const hoje = new Date("2026-05-19T12:00:00"); // terça
+      const historico = [
+        treino({ iniciadoEm: "2026-05-18T10:00:00" }),
+        treino({ iniciadoEm: "2026-05-22T10:00:00" }), // sexta, ainda por vir
+      ];
+
+      expect(contarDiasComTreinoNaSemana(frequenciaDe(historico, hoje), hoje)).toBe(1);
+    });
   });
 
   it("agrega progressao por exercicio usando a sessao mais recente e maior carga", () => {

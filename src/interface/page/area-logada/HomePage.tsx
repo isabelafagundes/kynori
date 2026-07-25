@@ -19,6 +19,7 @@ import { EstadoVazio } from "@/interface/widget/EstadoVazio";
 import { Botao } from "@/interface/widget/botao/Botao";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { StripSemanal } from "@/interface/widget/calendario/StripSemanal";
+import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 import { CardMetricaResumo } from "@/interface/page/area-logada/estatisticas/CardMetricaResumo";
 import { GraficoMaiorEvolucao } from "@/interface/widget/grafico/GraficoMaiorEvolucao";
 import { GraficoVolumeSemanal } from "@/interface/widget/grafico/GraficoVolumeSemanal";
@@ -27,6 +28,8 @@ interface PropriedadesHomePage {
   programas: Programa[];
   fichas: Ficha[];
   historico: RegistroTreino[];
+  /** Meta de treinos por semana do perfil; sem ela o strip usa 7. */
+  metaSemanal?: number;
   aoNavegar: (destino: string, params?: Record<string, string>) => void;
 }
 
@@ -34,9 +37,12 @@ export function HomePage({
   programas,
   fichas,
   historico,
+  metaSemanal,
   aoNavegar,
 }: PropriedadesHomePage) {
   const programaAtivo = programas.find((p) => p.ativo) ?? null;
+  const alvoCriarPrograma = useAlvoTutorial("home-criar-programa");
+  const alvoIniciarTreino = useAlvoTutorial("home-iniciar-treino");
 
   // Frequência derivada do histórico real (mesma fonte da tela de Estatísticas),
   // para que o streak da home fique consistente com as estatísticas.
@@ -78,6 +84,7 @@ export function HomePage({
             descricao="Organize seus treinos, acompanhe seu progresso e mantenha a constância."
             acao={
               <Botao
+                ref={alvoCriarPrograma}
                 variante="primario"
                 icone={<Icone nome="mais" tamanho={16} />}
                 onClick={() => aoNavegar("criarPrograma")}
@@ -104,7 +111,10 @@ export function HomePage({
               <h2 className="px-1 text-xs font-semibold uppercase tracking-wide text-texto-sutil font-display">
                 Seu próximo treino
               </h2>
-              <div className="rounded-2xl overflow-hidden bg-superficie border border-borda">
+              <div
+                ref={alvoIniciarTreino}
+                className="rounded-2xl overflow-hidden bg-superficie border border-borda"
+              >
                 <LinhaFicha
                   ficha={proximaFicha}
                   exerciciosCatalogo={exerciciosPadrao}
@@ -121,6 +131,7 @@ export function HomePage({
           <section className="reveal-up lg:hidden" style={{ animationDelay: "90ms" }}>
             <StripSemanal
               dados={dadosFrequencia}
+              metaSemanal={metaSemanal}
               aoAbrirDetalhe={() => aoNavegar("detalheSequencia")}
             />
           </section>

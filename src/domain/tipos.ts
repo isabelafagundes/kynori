@@ -166,7 +166,10 @@ export interface RegistroSerie {
 
 /** Registro de exercício no log */
 export interface RegistroExercicio {
+  /** Exercício realmente executado; histórico e progressão usam este ID. */
   exercicioId: string;
+  /** Prescrição original da ficha, presente somente quando houve substituição. */
+  exercicioPlanejadoId?: string;
   series: RegistroSerie[];
   nota: string;
 }

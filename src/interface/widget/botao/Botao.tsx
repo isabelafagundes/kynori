@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
 type VarianteBotao = "primario" | "secundario" | "fantasma";
 type TamanhoBotao = "normal" | "compacto";
@@ -25,17 +25,23 @@ const estilosPorTamanho: Record<TamanhoBotao, string> = {
   compacto: "px-3 py-2 rounded-[8px] text-xs gap-2",
 };
 
-export function Botao({
-  variante = "primario",
-  tamanho = "normal",
-  children,
-  icone,
-  ocuparLarguraTotal = false,
-  className = "",
-  ...props
-}: PropriedadesBotao) {
+/** Encaminha a ref para o <button> — o tutorial guiado precisa medir o
+    elemento real para recortá-lo no overlay. */
+export const Botao = forwardRef<HTMLButtonElement, PropriedadesBotao>(function Botao(
+  {
+    variante = "primario",
+    tamanho = "normal",
+    children,
+    icone,
+    ocuparLarguraTotal = false,
+    className = "",
+    ...props
+  },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       className={`
         inline-flex items-center justify-center
         font-medium
@@ -54,4 +60,4 @@ export function Botao({
       {children}
     </button>
   );
-}
+});

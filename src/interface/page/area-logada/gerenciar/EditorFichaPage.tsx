@@ -52,6 +52,7 @@ import { ModalCriarExercicio } from "@/interface/widget/modal/ModalCriarExercici
 import { ModalCopiarFicha } from "@/interface/widget/modal/ModalCopiarFicha";
 import { ModalConfirmacao } from "@/interface/widget/modal/ModalConfirmacao";
 import { useToast } from "@/interface/widget/toast";
+import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 import { useGuardaSaida } from "./useGuardaSaida";
 
 interface PropriedadesEditorFichaPage {
@@ -113,6 +114,10 @@ function RotuloSecao({
 
 export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesEditorFichaPage) {
   const { showError } = useToast();
+  const alvoIdentidade = useAlvoTutorial("ficha-identidade");
+  const alvoMontarTreino = useAlvoTutorial("ficha-montar-treino");
+  const alvoAdicionarItem = useAlvoTutorial("ficha-adicionar-item");
+  const alvoSalvar = useAlvoTutorial("ficha-salvar");
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [todosExercicios, setTodosExercicios] = useState<Exercicio[]>([]);
   const [tiposCardio, setTiposCardio] = useState<TipoCardioDef[]>([]);
@@ -458,7 +463,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="px-5 py-4 pb-6 space-y-6">
             {/* Nome + copiar de existente (link sutil) */}
-            <div className="space-y-2">
+            <div ref={alvoIdentidade} className="space-y-2">
               <Input
                 label="Nome da ficha"
                 tipo="text"
@@ -518,6 +523,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                     </p>
                   </div>
                   <Botao
+                    ref={alvoMontarTreino}
                     variante="primario"
                     tamanho="compacto"
                     icone={<Icone nome="mais" tamanho={16} />}
@@ -647,7 +653,10 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
             >
               Fechar
             </Botao>
-            <Botao variante="primario" onClick={handleSalvar} className="flex-1">
+            {/* Enquanto a subtela de itens está aberta por cima, este botão fica
+                escondido atrás dela — não registra como alvo do tutorial, senão
+                o recorte cairia num botão coberto. Volta a valer ao fechar. */}
+            <Botao ref={telaItensAberta ? undefined : alvoSalvar} variante="primario" onClick={handleSalvar} className="flex-1">
               {editando ? "Salvar" : "Criar Ficha"}
             </Botao>
           </div>
@@ -742,7 +751,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                 ) : (
                   <div className="space-y-3">
                     {/* Ações de adicionar */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div ref={alvoAdicionarItem} className="grid grid-cols-2 gap-2">
                       <Botao
                         variante="secundario"
                         className="border-dashed"
@@ -996,6 +1005,10 @@ function CardExercicioConfig({
   aoRemover,
   semBorda,
 }: CardExercicioConfigProps) {
+  // Só o primeiro item vira alvo do tutorial: destacar todos de uma vez não
+  // ensinaria nada, e o passo fala de "séries, repetições e descanso" no
+  // singular.
+  const alvoSeries = useAlvoTutorial("item-series");
   const {
     attributes,
     listeners,
@@ -1044,7 +1057,10 @@ function CardExercicioConfig({
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div
+        ref={numero === 1 ? alvoSeries : undefined}
+        className="grid grid-cols-4 gap-3"
+      >
         {/* Séries */}
         <div>
           <label className="text-xs text-texto-secundario mb-1 block">

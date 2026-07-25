@@ -16,6 +16,7 @@ export interface AcaoMenu {
   icone: string;
   onClick: () => void;
   perigo?: boolean;
+  separadorAntes?: boolean;
 }
 
 const LARGURA_MENU = 208;
@@ -31,7 +32,15 @@ function IconeMaisOpcoes({ tamanho = 18 }: { tamanho?: number }) {
   );
 }
 
-export function MenuAcoes({ rotulo, itens }: { rotulo: string; itens: AcaoMenu[] }) {
+export function MenuAcoes({
+  rotulo,
+  itens,
+  largura = LARGURA_MENU,
+}: {
+  rotulo: string;
+  itens: AcaoMenu[];
+  largura?: number;
+}) {
   const [aberto, setAberto] = useState(false);
   const [posicao, setPosicao] = useState({ top: 0, left: 0 });
   const botaoRef = useRef<HTMLButtonElement>(null);
@@ -39,7 +48,7 @@ export function MenuAcoes({ rotulo, itens }: { rotulo: string; itens: AcaoMenu[]
 
   function abrir() {
     const r = botaoRef.current?.getBoundingClientRect();
-    if (r) setPosicao({ top: r.bottom + 4, left: Math.max(8, r.right - LARGURA_MENU) });
+    if (r) setPosicao({ top: r.bottom + 4, left: Math.max(8, r.right - largura) });
     setAberto(true);
   }
 
@@ -84,7 +93,7 @@ export function MenuAcoes({ rotulo, itens }: { rotulo: string; itens: AcaoMenu[]
           <div
             ref={menuRef}
             role="menu"
-            style={{ position: "fixed", top: posicao.top, left: posicao.left, width: LARGURA_MENU }}
+            style={{ position: "fixed", top: posicao.top, left: posicao.left, width: largura }}
             className="z-[70] overflow-hidden rounded-xl border border-borda bg-superficie shadow-lg shadow-black/10"
           >
             {itens.map((it, i) => (
@@ -97,7 +106,7 @@ export function MenuAcoes({ rotulo, itens }: { rotulo: string; itens: AcaoMenu[]
                   it.onClick();
                 }}
                 className={`flex w-full items-center gap-2.5 whitespace-nowrap px-3.5 py-2.5 text-left text-sm transition-colors ${
-                  i > 0 ? "border-t border-borda-suave" : ""
+                  i > 0 || it.separadorAntes ? "border-t border-borda-suave" : ""
                 } ${it.perigo ? "text-perigo hover:bg-perigo/10" : "text-texto-primario hover:bg-superficie-suave"}`}
               >
                 <span className="shrink-0">

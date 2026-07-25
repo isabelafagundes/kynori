@@ -12,6 +12,12 @@ interface FormularioPerfilProps {
   avatarInicial?: string;
   textoBotao?: string;
   aoSalvar: (dados: { nome: string; avatarEmoji: string }) => void;
+  /** Notifica cada alteração, para quem renderiza uma prévia ao vivo do
+      avatar/nome fora do formulário (onboarding). */
+  aoAlterar?: (dados: { nome: string; avatarEmoji: string }) => void;
+  /** O onboarding mostra a prévia do cabeçalho acima do formulário; nesse
+      caso o círculo grande do avatar aqui dentro vira redundante. */
+  ocultarPreviaAvatar?: boolean;
 }
 
 export function FormularioPerfil({
@@ -19,12 +25,24 @@ export function FormularioPerfil({
   avatarInicial = AVATAR_EMOJI_PADRAO,
   textoBotao = "Salvar",
   aoSalvar,
+  aoAlterar,
+  ocultarPreviaAvatar = false,
 }: FormularioPerfilProps) {
   const [nome, setNome] = useState(nomeInicial);
   const [avatarEmoji, setAvatarEmoji] = useState(avatarInicial);
   const [tentouSalvar, setTentouSalvar] = useState(false);
 
   const nomeVazio = nome.trim().length === 0;
+
+  function alterarNome(valor: string) {
+    setNome(valor);
+    aoAlterar?.({ nome: valor, avatarEmoji });
+  }
+
+  function alterarAvatar(emoji: string) {
+    setAvatarEmoji(emoji);
+    aoAlterar?.({ nome, avatarEmoji: emoji });
+  }
 
   function handleSalvar() {
     setTentouSalvar(true);
@@ -35,17 +53,19 @@ export function FormularioPerfil({
   return (
     <div className="flex flex-col gap-6">
       {/* Preview do avatar selecionado */}
-      <div className="flex justify-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-acento-suave text-4xl ring-[1.5px] ring-borda-suave">
-          {avatarEmoji}
+      {!ocultarPreviaAvatar && (
+        <div className="flex justify-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-acento-suave text-4xl ring-[1.5px] ring-borda-suave">
+            {avatarEmoji}
+          </div>
         </div>
-      </div>
+      )}
 
       <Input
         label="Como podemos te chamar?"
         placeholder="Seu nome"
         value={nome}
-        onChange={(e) => setNome(e.target.value)}
+        onChange={(e) => alterarNome(e.target.value)}
         erro={tentouSalvar && nomeVazio ? "Digite seu nome" : undefined}
       />
 
@@ -58,7 +78,7 @@ export function FormularioPerfil({
             <button
               key={emoji}
               type="button"
-              onClick={() => setAvatarEmoji(emoji)}
+              onClick={() => alterarAvatar(emoji)}
               aria-label={`Selecionar avatar ${emoji}`}
               aria-pressed={avatarEmoji === emoji}
               className={`

@@ -1,75 +1,139 @@
-# Trainify
+# Kynori
 
-Trainify é um aplicativo privado para organizar, executar e acompanhar treinos de musculação e cardio. A ideia central é simples: o usuário abre o app, entende qual treino fazer, registra a sessão com o mínimo de fricção e acompanha sua constância ao longo do tempo.
+> **Movimento que vira progresso.**
 
-O projeto nasceu como um tracker pessoal de treino, mas com cuidado de produto: programas, fichas, histórico, progressão e estatísticas conversam entre si para transformar o treino do dia em um registro útil para as próximas sessões.
+Kynori é um aplicativo de treino para organizar rotinas, acompanhar sessões de musculação e cardio e tornar a evolução visível. A experiência foi pensada para que o usuário saiba o que fazer, registre cada treino com o mínimo de atrito e mantenha a constância ao longo do tempo.
 
-## Objetivo
+Mais do que contar séries ou cargas, Kynori conecta programas, fichas, histórico, progressão e estatísticas para transformar cada movimento em um próximo passo.
 
-O objetivo do Trainify é ajudar a manter consistência no treino sem transformar a experiência em um painel complexo demais. O app prioriza ação rápida, clareza e progressão prática:
+## A marca
 
-- Saber qual ficha executar dentro do programa ativo.
-- Registrar séries, repetições, cargas, descanso, notas e cardio durante a sessão.
-- Consultar histórico e progressão por exercício.
-- Manter programas e fichas reaproveitáveis, editáveis e fáceis de copiar.
-- Reforçar frequência e sequência de treinos de forma discreta.
+**Kynori** é um nome inventado para transmitir movimento, constância e evolução.
 
-## Tom do app
+A primeira parte, **Kyn-**, foi inspirada em *kínēsis*, palavra grega que significa “movimento” ou “ação de se mover” e que também está na origem de termos como *cinética* e *cinesiologia*. O verbo grego relacionado, *kinein*, significa “mover” ou “colocar em movimento”. A terminação **-ori** não possui um significado grego específico: ela foi criada para dar ao nome uma sonoridade fluida, acolhedora, memorável e compatível com uma marca global.
 
-O Trainify tem um tom calmo, direto e determinado. Ele evita a linguagem exagerada comum em apps fitness e prefere uma experiência mais limpa, acolhedora e focada.
+Conceitualmente, Kynori representa:
 
-A interface segue uma estética mobile-first inspirada em produtos de produtividade: bastante clareza visual, hierarquia simples, microinterações contidas e elementos de personalidade apenas quando ajudam o usuário a se orientar. O app deve parecer um parceiro de rotina, não um treinador gritando metas.
+> **Movimento que se transforma em evolução.**
 
-## Tecnologias principais
+Essa ideia acompanha toda a jornada proposta pelo aplicativo:
 
-- **React 19**: base da interface e dos fluxos de tela.
-- **TypeScript**: tipagem dos modelos de domínio, estado e componentes.
-- **Vite**: build tooling do frontend.
-- **Tailwind CSS 4**: sistema de estilos, tokens visuais e composição da UI.
-- **React Router DOM 7**: roteamento entre treinos, histórico, estatísticas, gerenciar, execução e editores.
-- **Capacitor 7**: empacotamento mobile para Android e iOS, além de integrações nativas.
-- **Capacitor Preferences e Filesystem**: persistência local e suporte a backup/exportação de dados.
-- **Capacitor Haptics, Local Notifications, Keyboard, Safe Area e Splash Screen**: acabamento mobile, feedback tátil, notificações e adaptação a áreas seguras.
-- **Vitest e Testing Library**: testes unitários e de comportamento para regras de estado, utilitários e hooks.
-- **ESLint**: padronização e verificação estática do código.
+**movimentar → registrar → manter constância → progredir**
+
+A identidade visual reforça o conceito ao unir a letra **K**, uma pessoa em movimento, curvas que sugerem fluidez e continuidade e formas direcionadas para a frente, representando progresso.
+
+## Propósito
+
+Kynori existe para ajudar pessoas a manter uma rotina de treino consistente sem transformar a experiência em um painel complexo. O aplicativo prioriza clareza, agilidade e progressão prática:
+
+- indicar qual ficha executar dentro do programa ativo;
+- registrar séries, repetições, cargas, descanso, notas e cardio durante a sessão;
+- apresentar o histórico e a progressão de cada exercício;
+- manter programas e fichas reutilizáveis, editáveis e fáceis de copiar;
+- reforçar a frequência e a sequência de treinos de forma discreta.
+
+## Experiência
+
+Kynori tem um tom calmo, direto e determinado. Em vez da linguagem exagerada comum em aplicativos fitness, oferece uma experiência limpa, acolhedora e focada.
+
+A interface mobile-first se inspira em produtos de produtividade: hierarquia visual simples, ações claras, microinterações contidas e elementos de personalidade usados para orientar o usuário. Kynori deve parecer um parceiro de rotina — não um treinador gritando metas.
+
+## Funcionalidades
+
+### Programas e fichas
+
+- criar, editar, copiar, ativar e excluir programas de treino;
+- manter um único programa ativo por vez;
+- criar, editar, copiar e excluir fichas;
+- vincular uma ou mais fichas a programas;
+- reutilizar fichas em diferentes programas;
+- cadastrar exercícios personalizados além da biblioteca padrão;
+- configurar exercícios, séries, repetições, cargas e intervalos de descanso;
+- adicionar cardio opcional com tipo, duração e observações.
+
+### Execução do treino
+
+- registrar séries, repetições e cargas durante a sessão;
+- adicionar ou remover séries sem interromper o treino;
+- acompanhar o intervalo com um timer de descanso por exercício;
+- registrar notas por exercício e por atividade de cardio;
+- salvar data, início, término, exercícios e cardio ao finalizar;
+- receber feedbacks discretos de conclusão, celebração e ações que podem ser desfeitas.
+
+### Histórico e evolução
+
+- consultar os treinos realizados e seus detalhes;
+- acompanhar a progressão por exercício com base em sessões anteriores;
+- visualizar estatísticas de frequência e evolução;
+- acompanhar a sequência de treinos e a atividade semanal;
+- exportar e importar backups dos dados.
+
+## Tecnologias
+
+- **React 19** para a interface e os fluxos de tela;
+- **TypeScript** para tipar o domínio, o estado e os componentes;
+- **Vite** para desenvolvimento e build;
+- **Tailwind CSS 4** para estilos e tokens visuais;
+- **React Router DOM 7** para navegação;
+- **Capacitor 7** para os aplicativos Android e iOS e integrações nativas;
+- **Capacitor Preferences e Filesystem** para persistência local e backups;
+- **Capacitor Haptics, Local Notifications, Keyboard, Safe Area, Share e Splash Screen** para a experiência mobile;
+- **Vitest e Testing Library** para testes unitários e de comportamento;
+- **ESLint** para análise estática e padronização do código.
 
 ## Arquitetura
 
-O código segue uma organização em camadas, mantendo regras de negócio, estado, infraestrutura e interface separadas:
+O código é organizado em camadas para manter regras de negócio, estado, infraestrutura e interface separados:
 
-- `src/domain`: modelos e tipos centrais do domínio, como programa, ficha, exercício, cardio e registro de treino.
-- `src/application`: estado global e serviços de aplicação, incluindo gerenciamento dos dados de treino e snapshots.
-- `src/infrastructure`: repositórios, mocks, persistência local, backup, notificações e integrações com Capacitor.
-- `src/interface`: páginas, rotas, layout, componentes reutilizáveis e utilitários visuais.
+```text
+src/
+├── domain/          # Modelos e tipos centrais
+├── application/     # Estado global e serviços da aplicação
+├── infrastructure/  # Persistência, backups e integrações nativas
+└── interface/       # Páginas, rotas, componentes e utilitários visuais
+```
 
-Essa separação permite evoluir a interface, trocar fontes de dados ou adicionar integrações sem espalhar regra de negócio pelas telas.
+Essa separação permite evoluir a interface, substituir fontes de dados e adicionar integrações sem espalhar regras de negócio pelas telas.
 
-## Principais requisitos funcionais
+## Como executar
 
-- Criar, editar, copiar, ativar e excluir programas de treino.
-- Permitir apenas um programa ativo por vez.
-- Criar, editar, copiar e excluir fichas de treino.
-- Vincular uma ou mais fichas a programas.
-- Manter fichas independentes dos programas, permitindo reutilização.
-- Cadastrar exercícios customizados além da biblioteca padrão.
-- Montar fichas com exercícios, séries, repetições, uso de carga e tempo de descanso.
-- Adicionar cardio opcional em uma ficha, com tipo, duração e nota.
-- Executar uma ficha em modo de treino, registrando séries, repetições e cargas.
-- Permitir adicionar ou remover séries durante a execução.
-- Exibir timer de descanso configurado por exercício.
-- Registrar notas por exercício e por cardio.
-- Finalizar sessões salvando data, horário de início, horário de fim, exercícios e cardio.
-- Exibir histórico de treinos realizados.
-- Abrir o detalhe de um treino do histórico.
-- Mostrar progressão por exercício com base em sessões anteriores.
-- Exibir estatísticas gerais de frequência e evolução.
-- Acompanhar sequência de treinos e atividade semanal.
-- Persistir os dados localmente no dispositivo.
-- Exportar/importar snapshots ou backups dos dados do usuário.
-- Oferecer feedbacks discretos de conclusão, desfazer e celebração.
+### Pré-requisitos
+
+- Node.js compatível com o projeto;
+- npm;
+- Android Studio ou Xcode para executar as versões nativas.
+
+### Ambiente de desenvolvimento
+
+```bash
+npm install
+npm run dev
+```
+
+### Qualidade e build
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+### Aplicativos nativos
+
+```bash
+npm run cap:sync
+npm run cap:open:android
+npm run cap:open:ios
+```
 
 ## Direção de produto
 
-O Trainify privilegia a rotina real: treinos mudam, cargas variam, fichas são copiadas, exercícios são adaptados e nem todo dia precisa virar uma análise profunda. Por isso, a experiência deve continuar leve mesmo quando o histórico cresce.
+Kynori privilegia a rotina real: treinos mudam, cargas variam, fichas são copiadas, exercícios são adaptados e nem todo dia precisa se transformar em uma análise profunda. A experiência deve continuar leve mesmo quando o histórico cresce.
 
-O sucesso do app não é fazer o usuário passar mais tempo nele. É fazer com que ele consiga treinar melhor, registrar o necessário e voltar para a vida.
+O sucesso de Kynori não é fazer o usuário passar mais tempo no aplicativo. É ajudá-lo a treinar melhor, registrar o necessário e seguir em movimento.
+
+---
+
+**Kynori** é um nome inspirado em *kínēsis*, palavra grega relacionada a movimento. A marca representa a evolução construída treino após treino: cada série registrada, cada carga superada e cada passo dado com constância. Sua identidade une movimento, leveza e progresso em uma experiência simples e acolhedora.
+
+Referência etimológica: [Kinesis — Etymology, Origin & Meaning](https://www.etymonline.com/word/kinesis).

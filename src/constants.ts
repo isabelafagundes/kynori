@@ -25,6 +25,8 @@ export const STORAGE_KEYS = {
   DADOS_TREINO: "trainify_dados_treino",
   // Treino em execução (recuperável após segundo plano / fechamento)
   SESSAO_ATIVA: "trainify_sessao_ativa",
+  // Progresso do tutorial guiado (fase prática do onboarding)
+  TUTORIAL: "trainify_tutorial",
   // Identificador estavel desta instalacao
   INSTALACAO_ID: "trainify_instalacao_id",
   // Barra lateral do desktop recolhida (só ícones)

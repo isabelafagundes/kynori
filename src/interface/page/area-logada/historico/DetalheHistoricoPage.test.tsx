@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { Ficha, RegistroTreino } from "@/domain/tipos";
+import type { Exercicio, Ficha, RegistroTreino } from "@/domain/tipos";
 import { DetalheHistoricoPage } from "./DetalheHistoricoPage";
 
 vi.mock("@/interface/page/area-logada/execucao/OverlayFinalizado", () => ({
@@ -27,6 +27,11 @@ const ficha: Ficha = {
   itens: [],
 };
 
+const exercicios: Exercicio[] = [
+  { id: "remada-baixa", nome: "Remada baixa", grupoMuscular: "Costas" },
+  { id: "remada-curvada", nome: "Remada curvada", grupoMuscular: "Costas" },
+];
+
 describe("DetalheHistoricoPage", () => {
   it("abre o compartilhamento para o registro exibido", async () => {
     const user = userEvent.setup();
@@ -45,5 +50,33 @@ describe("DetalheHistoricoPage", () => {
     await user.click(screen.getByRole("button", { name: "Compartilhar resultado" }));
 
     expect(screen.getByTestId("editor-compartilhamento")).toHaveTextContent(registro.id);
+  });
+
+  it("mostra o exercício executado e identifica o planejado quando houve troca", () => {
+    const registroComTroca: RegistroTreino = {
+      ...registro,
+      exercicios: [
+        {
+          exercicioId: "remada-baixa",
+          exercicioPlanejadoId: "remada-curvada",
+          series: [{ serie: 1, repeticoes: 12, carga: 35 }],
+          nota: "",
+        },
+      ],
+    };
+
+    render(
+      <DetalheHistoricoPage
+        registroId={registroComTroca.id}
+        fichas={[ficha]}
+        historico={[registroComTroca]}
+        exercicios={exercicios}
+        aoNavegar={vi.fn()}
+        aoVoltar={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Remada baixa" })).toBeInTheDocument();
+    expect(screen.getByText("Planejado: Remada curvada")).toBeInTheDocument();
   });
 });

@@ -1,48 +1,104 @@
 /* ═══════════════════════════════════════════
-   Onboarding — Primeiro acesso ao Pezzo
+   Onboarding — Primeiro acesso ao Kynori
+
+   Orquestra as etapas da fase de perguntas:
+   boas-vindas → perfil → meta semanal → contrato.
+   O perfil só é persistido no fim, para que o
+   botão voltar não deixe um usuário meio criado.
    ═══════════════════════════════════════════ */
 
-import { FormularioPerfil } from "@/interface/widget/formulario/FormularioPerfil";
+import { useState } from "react";
 import { usuarioManager } from "@/application/state/usuario.state";
+import { tutorialManager } from "@/application/state/tutorial.state";
+import { AVATAR_EMOJI_PADRAO } from "@/domain/usuario";
+import { BoasVindasPage } from "./BoasVindasPage";
+import { PerfilPage } from "./PerfilPage";
+import { MetaSemanalPage } from "./MetaSemanalPage";
+import { ContratoTutorialPage } from "./ContratoTutorialPage";
 
 interface OnboardingUsuarioPageProps {
   aoConcluir: () => void;
 }
 
-export function OnboardingUsuarioPage({ aoConcluir }: OnboardingUsuarioPageProps) {
-  function handleSalvar(dados: { nome: string; avatarEmoji: string }) {
-    usuarioManager.definirUsuario(dados);
+type Etapa = "boas-vindas" | "perfil" | "meta" | "contrato";
+
+/** Etapas com barra de progresso, na ordem em que aparecem. */
+const ETAPAS_WIZARD: Etapa[] = ["perfil", "meta", "contrato"];
+const TOTAL_ETAPAS = ETAPAS_WIZARD.length;
+
+interface RespostasOnboarding {
+  nome: string;
+  avatarEmoji: string;
+  metaSemanal?: number;
+}
+
+export function OnboardingUsuarioPage({
+  aoConcluir,
+}: OnboardingUsuarioPageProps) {
+  const [etapa, setEtapa] = useState<Etapa>("boas-vindas");
+  const [respostas, setRespostas] = useState<RespostasOnboarding>({
+    nome: "",
+    avatarEmoji: AVATAR_EMOJI_PADRAO,
+  });
+
+  const indiceDoPasso = ETAPAS_WIZARD.indexOf(etapa);
+
+  /** Persiste o perfil e libera a área logada. `comTutorial` decide se a fase
+      prática (os balões sobre as telas reais) começa a rodar. */
+  function concluir(dados: RespostasOnboarding, comTutorial: boolean) {
+    usuarioManager.definirUsuario({
+      nome: dados.nome,
+      avatarEmoji: dados.avatarEmoji,
+      metaSemanal: dados.metaSemanal,
+    });
+    if (comTutorial) tutorialManager.iniciar();
+    else tutorialManager.encerrar();
     aoConcluir();
   }
 
+  if (etapa === "boas-vindas") {
+    return <BoasVindasPage aoComecar={() => setEtapa("perfil")} />;
+  }
+
+  if (etapa === "perfil") {
+    return (
+      <PerfilPage
+        passo={indiceDoPasso}
+        total={TOTAL_ETAPAS}
+        nomeInicial={respostas.nome}
+        avatarInicial={respostas.avatarEmoji}
+        aoVoltar={() => setEtapa("boas-vindas")}
+        aoContinuar={({ nome, avatarEmoji }) => {
+          setRespostas((atual) => ({ ...atual, nome, avatarEmoji }));
+          setEtapa("meta");
+        }}
+      />
+    );
+  }
+
+  if (etapa === "meta") {
+    return (
+      <MetaSemanalPage
+        passo={indiceDoPasso}
+        total={TOTAL_ETAPAS}
+        metaInicial={respostas.metaSemanal}
+        aoVoltar={() => setEtapa("perfil")}
+        aoContinuar={(metaSemanal) => {
+          setRespostas((atual) => ({ ...atual, metaSemanal }));
+          setEtapa("contrato");
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-[100dvh] overflow-y-auto bg-fundo">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[480px] flex-col px-6 pb-[max(var(--safe-bottom),24px)] pt-[max(var(--safe-top),40px)]">
-          <header className="flex items-center gap-2 animate-slide-up">
-            <img src="/kynori-mark-black.png" alt="" className="h-7 w-7 object-contain" />
-            <span className="font-display text-[13px] font-bold uppercase tracking-[0.18em] text-texto-sutil">
-            Kynori
-          </span>
-        </header>
-
-        <div className="mt-12 animate-slide-up [animation-delay:80ms]">
-          <h1 className="font-display text-[2rem] font-semibold leading-[1.1] tracking-tight text-texto-primario">
-            Bora montar
-            <br />
-            seu perfil.
-          </h1>
-          <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-texto-secundario">
-            Antes do primeiro treino, conta quem é você. Dá pra mudar quando quiser.
-          </p>
-        </div>
-
-        <div className="mt-10 flex-1 animate-slide-up [animation-delay:160ms]">
-          <FormularioPerfil
-            textoBotao="Começar a treinar"
-            aoSalvar={handleSalvar}
-          />
-        </div>
-      </div>
-    </div>
+    <ContratoTutorialPage
+      passo={indiceDoPasso}
+      total={TOTAL_ETAPAS}
+      primeiroNome={respostas.nome.trim().split(/\s+/)[0] ?? ""}
+      aoVoltar={() => setEtapa("meta")}
+      aoIniciarTutorial={() => concluir(respostas, true)}
+      aoPularTutorial={() => concluir(respostas, false)}
+    />
   );
 }

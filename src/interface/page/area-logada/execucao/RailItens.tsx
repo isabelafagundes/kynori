@@ -33,7 +33,7 @@ export function RailItens({
 
           return (
             <button
-              key={item.indice}
+              key={item.sessaoItemId}
               type="button"
               onClick={() => aoIrPara(item.indice)}
               aria-current={ativo ? "step" : undefined}

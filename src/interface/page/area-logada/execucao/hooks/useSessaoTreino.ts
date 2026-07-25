@@ -16,6 +16,7 @@ import {
   limparSessaoAtiva,
   salvarSessaoAtiva,
   VERSAO_SESSAO_SALVA,
+  type ConfiguracaoExercicioSessao,
   type SessaoItemSalvo,
   type SessaoTreinoSalva,
 } from "@/application/state/sessao-ativa";
@@ -37,7 +38,12 @@ const METRICAS_CARDIO: ChaveMetricaCardio[] = [
 ];
 
 export interface SessaoExercicio {
+  /** Exercício efetivamente executado nesta sessão. */
   exercicioId: string;
+  /** Exercício prescrito na ficha; não muda durante a sessão. */
+  exercicioPlanejadoId?: string;
+  origem: "planejado" | "adicionado";
+  configuracao: ConfiguracaoExercicioSessao;
   series: RegistroSerie[];
   nota: string;
   concluidas: Set<number>;
@@ -49,11 +55,12 @@ export interface SessaoExercicio {
     `visitado` fica dentro de SessaoExercicio (tipo consumido pelos widgets)
     e no envelope do cardio — assimetria proposital. */
 export type SessaoItem =
-  | { tipo: "exercicio"; exercicio: SessaoExercicio }
-  | { tipo: "cardio"; registro: RegistroCardio; concluido: boolean; visitado: boolean };
+  | { sessaoItemId: string; tipo: "exercicio"; exercicio: SessaoExercicio }
+  | { sessaoItemId: string; tipo: "cardio"; registro: RegistroCardio; concluido: boolean; visitado: boolean };
 
 /** Status derivado por item, pros chips (mobile) e rail (md+). */
 export interface StatusItem {
+  sessaoItemId: string;
   indice: number;
   tipo: "exercicio" | "cardio";
   estado: "concluido" | "ativo" | "pendente";
@@ -78,6 +85,21 @@ interface AtualizacaoSerie {
   carga?: number;
 }
 
+export type ResultadoTrocaExercicio =
+  | "trocado"
+  | "requerConfirmacao"
+  | "jaIniciado"
+  | "duplicado"
+  | "invalido";
+
+export type ResultadoAdicionarExercicio = "adicionado" | "duplicado" | "invalido";
+
+export interface AlteracaoPularExercicio {
+  modo: "removido" | "interrompido";
+  indice: number;
+  itemOriginal: Extract<SessaoItem, { tipo: "exercicio" }>;
+}
+
 type AtualizacaoCardio = Partial<Pick<RegistroCardio, ChaveMetricaCardio | "nota">>;
 
 function criarSeriesPreenchidas(total: number, repeticoes: number): RegistroSerie[] {
@@ -92,7 +114,7 @@ function clonarItens(itens: SessaoItem[]): SessaoItem[] {
   return itens.map((item) =>
     item.tipo === "exercicio"
       ? {
-          tipo: "exercicio",
+          ...item,
           exercicio: {
             ...item.exercicio,
             series: item.exercicio.series.map((serie) => ({ ...serie })),
@@ -101,6 +123,15 @@ function clonarItens(itens: SessaoItem[]): SessaoItem[] {
         }
       : { ...item, registro: { ...item.registro } }
   );
+}
+
+function configuracaoDaFicha(exercicio: ExercicioFicha): ConfiguracaoExercicioSessao {
+  return {
+    series: exercicio.series,
+    repeticoes: exercicio.repeticoes,
+    usaCarga: exercicio.usaCarga,
+    descansoSegundos: exercicio.descansoSegundos,
+  };
 }
 
 function ultimoCardioDoTipo(
@@ -142,9 +173,13 @@ function criarItensIniciais(ficha: Ficha, historico: RegistroTreino[]): SessaoIt
   return ficha.itens.map((item, indice): SessaoItem =>
     item.tipo === "exercicio"
       ? {
+          sessaoItemId: `planejado-${ficha.id}-${indice}`,
           tipo: "exercicio",
           exercicio: {
             exercicioId: item.exercicio.exercicioId,
+            exercicioPlanejadoId: item.exercicio.exercicioId,
+            origem: "planejado",
+            configuracao: configuracaoDaFicha(item.exercicio),
             series: criarSeriesPreenchidas(item.exercicio.series, item.exercicio.repeticoes),
             nota: "",
             concluidas: new Set<number>(),
@@ -152,6 +187,7 @@ function criarItensIniciais(ficha: Ficha, historico: RegistroTreino[]): SessaoIt
           },
         }
       : {
+          sessaoItemId: `planejado-${ficha.id}-${indice}`,
           tipo: "cardio",
           registro: criarRegistroCardioInicial(item.cardio, historico, ficha.id),
           concluido: false,
@@ -168,34 +204,78 @@ function itemConcluido(item: SessaoItem): boolean {
   return item.tipo === "exercicio" ? exercicioConcluido(item.exercicio) : item.concluido;
 }
 
-/** Snapshot restaurável só se espelhar a ficha atual posição a posição —
-    a ficha pode ter sido editada entre as sessões. */
 function snapshotCompativel(salva: SessaoTreinoSalva, ficha: Ficha): boolean {
   if (salva.fichaId !== ficha.id) return false;
+
+  if (salva.versao === VERSAO_SESSAO_SALVA) {
+    return salva.itens.every((item) => {
+      if (typeof item.sessaoItemId !== "string" || item.sessaoItemId.length === 0) return false;
+      if (item.tipo === "cardio") return true;
+      return (
+        (item.origem === "planejado" || item.origem === "adicionado") &&
+        item.configuracao !== undefined &&
+        item.configuracao.series > 0 &&
+        item.configuracao.repeticoes > 0
+      );
+    });
+  }
+
   if (salva.itens.length !== ficha.itens.length) return false;
-  return salva.itens.every((item, indice) => item.tipo === ficha.itens[indice]?.tipo);
+  return salva.itens.every((item, indice) => {
+    const itemFicha = ficha.itens[indice];
+    if (item.tipo !== itemFicha?.tipo) return false;
+    if (item.tipo !== "exercicio" || itemFicha.tipo !== "exercicio") return true;
+
+    const planejado = item.exercicioPlanejadoId ?? item.exercicioId;
+    return planejado === itemFicha.exercicio.exercicioId;
+  });
 }
 
-function restaurarItens(salvos: SessaoItemSalvo[]): SessaoItem[] {
-  return salvos.map((item): SessaoItem =>
-    item.tipo === "exercicio"
-      ? {
-          tipo: "exercicio",
-          exercicio: {
-            exercicioId: item.exercicioId,
-            series: item.series.map((serie) => ({ ...serie })),
-            nota: item.nota,
-            concluidas: new Set(item.concluidas),
-            visitado: item.visitado,
-          },
-        }
+function restaurarItens(salvos: SessaoItemSalvo[], ficha: Ficha): SessaoItem[] {
+  return salvos.map((item, indice): SessaoItem => {
+    const sessaoItemId = item.sessaoItemId ?? `legado-${ficha.id}-${indice}`;
+    if (item.tipo === "cardio") {
+      return {
+        sessaoItemId,
+        tipo: "cardio",
+        registro: { ...item.registro },
+        concluido: item.concluido,
+        visitado: item.visitado,
+      };
+    }
+
+    const itemFicha = ficha.itens[indice];
+    const configuracaoLegada = itemFicha?.tipo === "exercicio"
+      ? configuracaoDaFicha(itemFicha.exercicio)
       : {
-          tipo: "cardio",
-          registro: { ...item.registro },
-          concluido: item.concluido,
-          visitado: item.visitado,
-        }
-  );
+          series: Math.max(1, item.series.length),
+          repeticoes: item.series[0]?.repeticoes ?? 12,
+          usaCarga: item.series.some((serie) => serie.carga > 0),
+          descansoSegundos: 60,
+        };
+    const origem = item.origem ?? "planejado";
+
+    return {
+      sessaoItemId,
+      tipo: "exercicio",
+      exercicio: {
+        exercicioId: item.exercicioId,
+        exercicioPlanejadoId:
+          origem === "adicionado"
+            ? undefined
+            : item.exercicioPlanejadoId ??
+              (itemFicha?.tipo === "exercicio"
+                ? itemFicha.exercicio.exercicioId
+                : item.exercicioId),
+        origem,
+        configuracao: item.configuracao ?? configuracaoLegada,
+        series: item.series.map((serie) => ({ ...serie })),
+        nota: item.nota,
+        concluidas: new Set(item.concluidas),
+        visitado: item.visitado,
+      },
+    };
+  });
 }
 
 export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) {
@@ -214,13 +294,14 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
     void carregarSessaoAtiva().then((salva) => {
       if (!ativo) return;
       if (salva && !encerradaRef.current && snapshotCompativel(salva, ficha)) {
+        const itensRestaurados = restaurarItens(salva.itens, ficha);
         setIniciadoEm(salva.iniciadoEm);
         setIndiceAtual(
-          ficha.itens.length === 0
+          itensRestaurados.length === 0
             ? 0
-            : Math.max(0, Math.min(salva.indiceAtual, ficha.itens.length - 1))
+            : Math.max(0, Math.min(salva.indiceAtual, itensRestaurados.length - 1))
         );
-        setItens(restaurarItens(salva.itens));
+        setItens(itensRestaurados);
       }
       prontoRef.current = true;
     });
@@ -239,14 +320,19 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
       itens: itens.map((item): SessaoItemSalvo =>
         item.tipo === "exercicio"
           ? {
+              sessaoItemId: item.sessaoItemId,
               tipo: "exercicio",
               exercicioId: item.exercicio.exercicioId,
+              exercicioPlanejadoId: item.exercicio.exercicioPlanejadoId,
+              origem: item.exercicio.origem,
+              configuracao: item.exercicio.configuracao,
               series: item.exercicio.series,
               nota: item.exercicio.nota,
               concluidas: Array.from(item.exercicio.concluidas),
               visitado: item.exercicio.visitado,
             }
           : {
+              sessaoItemId: item.sessaoItemId,
               tipo: "cardio",
               registro: item.registro,
               concluido: item.concluido,
@@ -426,6 +512,205 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
     [alterarExercicio]
   );
 
+  const trocarExercicio = useCallback(
+    (
+      indiceItem: number,
+      novoExercicioId: string,
+      confirmarDescarte = false
+    ): ResultadoTrocaExercicio => {
+      const item = itens[indiceItem];
+      if (
+        !novoExercicioId ||
+        !item ||
+        item.tipo !== "exercicio" ||
+        novoExercicioId === item.exercicio.exercicioId
+      ) {
+        return "invalido";
+      }
+
+      const duplicado = itens.some(
+        (candidato, indice) =>
+          indice !== indiceItem &&
+          candidato.tipo === "exercicio" &&
+          candidato.exercicio.exercicioId === novoExercicioId
+      );
+      if (duplicado) return "duplicado";
+      if (item.exercicio.concluidas.size > 0) return "jaIniciado";
+
+      const configuracao = item.exercicio.configuracao;
+      const dadosEditados =
+        item.exercicio.nota.trim().length > 0 ||
+        item.exercicio.series.length !== configuracao.series ||
+        item.exercicio.series.some(
+          (serie, indice) =>
+            serie.serie !== indice + 1 ||
+            serie.repeticoes !== configuracao.repeticoes ||
+            serie.carga !== 0
+        );
+      if (dadosEditados && !confirmarDescarte) return "requerConfirmacao";
+
+      setItens((atuais) => {
+        const proximos = clonarItens(atuais);
+        const alvo = proximos[indiceItem];
+        if (!alvo || alvo.tipo !== "exercicio") return atuais;
+        alvo.exercicio.exercicioId = novoExercicioId;
+        alvo.exercicio.series = criarSeriesPreenchidas(
+          configuracao.series,
+          configuracao.repeticoes
+        );
+        alvo.exercicio.nota = "";
+        alvo.exercicio.concluidas = new Set<number>();
+        alvo.exercicio.visitado = true;
+        return proximos;
+      });
+      return "trocado";
+    },
+    [itens]
+  );
+
+  const restaurarExercicioPlanejado = useCallback(
+    (indiceItem: number, confirmarDescarte = false): ResultadoTrocaExercicio => {
+      const item = itens[indiceItem];
+      if (!item || item.tipo !== "exercicio") return "invalido";
+      if (!item.exercicio.exercicioPlanejadoId) return "invalido";
+      if (item.exercicio.exercicioId === item.exercicio.exercicioPlanejadoId) return "invalido";
+      return trocarExercicio(
+        indiceItem,
+        item.exercicio.exercicioPlanejadoId,
+        confirmarDescarte
+      );
+    },
+    [itens, trocarExercicio]
+  );
+
+  const adicionarExercicioApos = useCallback(
+    (
+      indiceItem: number,
+      exercicioId: string,
+      configuracao: ConfiguracaoExercicioSessao
+    ): ResultadoAdicionarExercicio => {
+      const configuracaoValida =
+        Number.isFinite(configuracao.series) &&
+        configuracao.series > 0 &&
+        Number.isFinite(configuracao.repeticoes) &&
+        configuracao.repeticoes > 0 &&
+        Number.isFinite(configuracao.descansoSegundos) &&
+        configuracao.descansoSegundos >= 0;
+      const indiceValido =
+        itens.length === 0 ? indiceItem === -1 : indiceItem >= 0 && indiceItem < itens.length;
+      if (!exercicioId || !indiceValido || !configuracaoValida) {
+        return "invalido";
+      }
+      if (
+        itens.some(
+          (item) => item.tipo === "exercicio" && item.exercicio.exercicioId === exercicioId
+        )
+      ) {
+        return "duplicado";
+      }
+
+      const novoItem: Extract<SessaoItem, { tipo: "exercicio" }> = {
+        sessaoItemId: crypto.randomUUID(),
+        tipo: "exercicio",
+        exercicio: {
+          exercicioId,
+          exercicioPlanejadoId: undefined,
+          origem: "adicionado",
+          configuracao: { ...configuracao },
+          series: criarSeriesPreenchidas(configuracao.series, configuracao.repeticoes),
+          nota: "",
+          concluidas: new Set<number>(),
+          visitado: false,
+        },
+      };
+
+      setItens((atuais) => {
+        const proximos = clonarItens(atuais);
+        proximos.splice(indiceItem + 1, 0, novoItem);
+        return proximos;
+      });
+      return "adicionado";
+    },
+    [itens]
+  );
+
+  const removerExercicioAdicionado = useCallback(
+    (sessaoItemId: string): boolean => {
+      const indice = itens.findIndex(
+        (item) =>
+          item.sessaoItemId === sessaoItemId &&
+          item.tipo === "exercicio" &&
+          item.exercicio.origem === "adicionado"
+      );
+      if (indice < 0) return false;
+
+      setItens((atuais) => atuais.filter((item) => item.sessaoItemId !== sessaoItemId));
+      setIndiceAtual((atual) => {
+        if (indice < atual) return Math.max(0, atual - 1);
+        return Math.min(atual, Math.max(0, itens.length - 2));
+      });
+      return true;
+    },
+    [itens]
+  );
+
+  const pularExercicio = useCallback(
+    (indiceItem: number): AlteracaoPularExercicio | null => {
+      const item = itens[indiceItem];
+      if (!item || item.tipo !== "exercicio") return null;
+
+      const itemOriginal = clonarItens([item])[0] as Extract<
+        SessaoItem,
+        { tipo: "exercicio" }
+      >;
+      const indicesConcluidos = Array.from(item.exercicio.concluidas).sort((a, b) => a - b);
+
+      if (indicesConcluidos.length === 0) {
+        setItens((atuais) => atuais.filter((_, indice) => indice !== indiceItem));
+        setIndiceAtual(Math.min(indiceItem, Math.max(0, itens.length - 2)));
+        return { modo: "removido", indice: indiceItem, itemOriginal };
+      }
+
+      setItens((atuais) => {
+        const proximos = clonarItens(atuais);
+        const alvo = proximos[indiceItem];
+        if (!alvo || alvo.tipo !== "exercicio") return atuais;
+        alvo.exercicio.series = indicesConcluidos
+          .map((indice) => alvo.exercicio.series[indice])
+          .filter((serie): serie is RegistroSerie => serie !== undefined)
+          .map((serie, indice) => ({ ...serie, serie: indice + 1 }));
+        alvo.exercicio.concluidas = new Set(
+          alvo.exercicio.series.map((_, indice) => indice)
+        );
+        alvo.exercicio.configuracao = {
+          ...alvo.exercicio.configuracao,
+          series: alvo.exercicio.series.length,
+        };
+        return proximos;
+      });
+      setIndiceAtual(Math.min(indiceItem + 1, itens.length - 1));
+      return { modo: "interrompido", indice: indiceItem, itemOriginal };
+    },
+    [itens]
+  );
+
+  const desfazerPularExercicio = useCallback(
+    (alteracao: AlteracaoPularExercicio) => {
+      setItens((atuais) => {
+        const proximos = clonarItens(atuais);
+        const existente = proximos.findIndex(
+          (item) => item.sessaoItemId === alteracao.itemOriginal.sessaoItemId
+        );
+        const original = clonarItens([alteracao.itemOriginal])[0];
+        if (existente >= 0) proximos[existente] = original;
+        else proximos.splice(Math.min(alteracao.indice, proximos.length), 0, original);
+        return proximos;
+      });
+      setIndiceAtual(alteracao.indice);
+    },
+    []
+  );
+
   const preencherDoHistorico = useCallback(
     (indiceSerieAlvo: number, serieHistorica: RegistroSerie) => {
       atualizarSerie(indiceAtual, indiceSerieAlvo, {
@@ -458,22 +743,12 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
 
   // ── Derivações pro header, chips e rail ──
   const { statusItens, progresso } = useMemo(() => {
-    let itensConcluidos = 0;
-    let seriesConcluidas = 0;
-    let seriesTotal = 0;
-    let unidadesConcluidas = 0;
-    let unidadesTotal = 0;
-
     const statusItens = itens.map((item, indice): StatusItem => {
       const concluido = itemConcluido(item);
-      if (concluido) itensConcluidos += 1;
 
       if (item.tipo === "exercicio") {
-        seriesConcluidas += item.exercicio.concluidas.size;
-        seriesTotal += item.exercicio.series.length;
-        unidadesConcluidas += item.exercicio.concluidas.size;
-        unidadesTotal += item.exercicio.series.length;
         return {
+          sessaoItemId: item.sessaoItemId,
           indice,
           tipo: "exercicio",
           estado: concluido ? "concluido" : indice === indiceAtual ? "ativo" : "pendente",
@@ -482,9 +757,8 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
         };
       }
 
-      unidadesConcluidas += concluido ? 1 : 0;
-      unidadesTotal += 1;
       return {
+        sessaoItemId: item.sessaoItemId,
         indice,
         tipo: "cardio",
         estado: concluido ? "concluido" : indice === indiceAtual ? "ativo" : "pendente",
@@ -492,6 +766,25 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
         tipoCardio: item.registro.tipo,
       };
     });
+
+    const itensConcluidos = itens.filter(itemConcluido).length;
+    const exercicios = itens.filter(
+      (item): item is Extract<SessaoItem, { tipo: "exercicio" }> => item.tipo === "exercicio"
+    );
+    const cardios = itens.filter(
+      (item): item is Extract<SessaoItem, { tipo: "cardio" }> => item.tipo === "cardio"
+    );
+    const seriesConcluidas = exercicios.reduce(
+      (total, item) => total + item.exercicio.concluidas.size,
+      0
+    );
+    const seriesTotal = exercicios.reduce(
+      (total, item) => total + item.exercicio.series.length,
+      0
+    );
+    const cardiosConcluidos = cardios.filter((item) => item.concluido).length;
+    const unidadesConcluidas = seriesConcluidas + cardiosConcluidos;
+    const unidadesTotal = seriesTotal + cardios.length;
 
     const progresso: ProgressoSessao = {
       itensConcluidos,
@@ -529,6 +822,10 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
         .filter((item) => item.tipo === "exercicio")
         .map((item) => ({
           exercicioId: item.exercicio.exercicioId,
+          ...(item.exercicio.exercicioPlanejadoId &&
+          item.exercicio.exercicioId !== item.exercicio.exercicioPlanejadoId
+            ? { exercicioPlanejadoId: item.exercicio.exercicioPlanejadoId }
+            : {}),
           nota: item.exercicio.nota,
           series: item.exercicio.series.filter((_, indice) =>
             item.exercicio.concluidas.has(indice)
@@ -552,9 +849,8 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
 
   const itemAtual: SessaoItem | undefined = itens[indiceAtual];
   const ultimoItem = indiceAtual === itens.length - 1;
-  const itemFichaAtual = ficha.itens[indiceAtual];
-  const configuracaoAtual: ExercicioFicha | undefined =
-    itemFichaAtual?.tipo === "exercicio" ? itemFichaAtual.exercicio : undefined;
+  const configuracaoAtual: ConfiguracaoExercicioSessao | undefined =
+    itemAtual?.tipo === "exercicio" ? itemAtual.exercicio.configuracao : undefined;
 
   return useMemo(
     () => ({
@@ -572,6 +868,12 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
       removerSerie,
       marcarConcluida,
       atualizarNota,
+      trocarExercicio,
+      restaurarExercicioPlanejado,
+      adicionarExercicioApos,
+      removerExercicioAdicionado,
+      pularExercicio,
+      desfazerPularExercicio,
       irPara,
       anterior,
       proximo,
@@ -598,6 +900,12 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
       removerSerie,
       marcarConcluida,
       atualizarNota,
+      trocarExercicio,
+      restaurarExercicioPlanejado,
+      adicionarExercicioApos,
+      removerExercicioAdicionado,
+      pularExercicio,
+      desfazerPularExercicio,
       irPara,
       anterior,
       proximo,

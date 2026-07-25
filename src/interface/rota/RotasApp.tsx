@@ -34,6 +34,8 @@ import { EstatisticasPage } from "@/interface/page/area-logada/estatisticas/Esta
 import { DetalheSequenciaPage } from "@/interface/page/area-logada/sequencia/DetalheSequenciaPage";
 import { OnboardingUsuarioPage } from "@/interface/page/onboarding/OnboardingUsuarioPage";
 import { ToastProvider } from "@/interface/widget/toast";
+import { TutorialProvider } from "@/interface/widget/tutorial/TutorialProvider";
+import { OverlayTutorial } from "@/interface/widget/tutorial/OverlayTutorial";
 
 import { AppLayout } from "./AppLayout";
 import { useDados } from "./DadosProvider";
@@ -43,10 +45,16 @@ import { ROTAS, ehTabRaiz } from "./rotas";
 /* ─── Wrappers de página ─── */
 
 function HomeRota() {
-  const { programas, fichas, historico } = useDados();
+  const { programas, fichas, historico, usuario } = useDados();
   const { aoNavegar } = useNavegar();
   return (
-    <HomePage programas={programas} fichas={fichas} historico={historico} aoNavegar={aoNavegar} />
+    <HomePage
+      programas={programas}
+      fichas={fichas}
+      historico={historico}
+      metaSemanal={usuario?.metaSemanal}
+      aoNavegar={aoNavegar}
+    />
   );
 }
 
@@ -227,6 +235,7 @@ export function RotasApp() {
 
   return (
     <ToastProvider>
+      <TutorialProvider>
       <Routes location={background ?? location}>
         {/* Tela cheia, fora do shell */}
         <Route path={ROTAS.execucao} element={<ExecucaoRota />} />
@@ -262,6 +271,10 @@ export function RotasApp() {
           <Route path={ROTAS.editarFicha} element={<EditorFichaRota />} />
         </Routes>
       )}
+
+      {/* Acima de tudo (z-100): os editores entram como drawer em z-60. */}
+      <OverlayTutorial />
+      </TutorialProvider>
     </ToastProvider>
   );
 }

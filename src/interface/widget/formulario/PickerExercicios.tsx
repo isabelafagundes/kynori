@@ -7,6 +7,7 @@ import type { Exercicio } from "@/domain/tipos";
 import { Chip } from "@/interface/widget/chip/Chip";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { Input } from "@/interface/widget/formulario/Input";
+import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 
 interface PickerExerciciosProps {
   exercicios: Exercicio[];
@@ -14,6 +15,9 @@ interface PickerExerciciosProps {
   aoAdicionar: (exercicioId: string) => void;
   gruposFiltrados?: string[];
   aoCriarExercicioCustom?: () => void;
+  grupoInicial?: string;
+  modo?: "adicionar" | "selecionar";
+  textoVazio?: string;
 }
 
 export function PickerExercicios({
@@ -22,9 +26,13 @@ export function PickerExercicios({
   aoAdicionar,
   gruposFiltrados,
   aoCriarExercicioCustom,
+  grupoInicial,
+  modo = "adicionar",
+  textoVazio,
 }: PickerExerciciosProps) {
+  const alvoBusca = useAlvoTutorial("picker-busca");
   const [busca, setBusca] = useState("");
-  const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null);
+  const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(grupoInicial ?? null);
 
   // Filtrar exercícios
   const exerciciosFiltrados = useMemo(() => {
@@ -113,7 +121,10 @@ export function PickerExercicios({
   return (
     <div className="flex flex-col gap-3">
       {/* Barra de busca + filtros — fixa ao rolar */}
-      <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-superficie/95 backdrop-blur-sm space-y-3">
+      <div
+        ref={alvoBusca}
+        className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-superficie/95 backdrop-blur-sm space-y-3"
+      >
         <Input
           tipo="busca"
           value={busca}
@@ -218,7 +229,9 @@ export function PickerExercicios({
       ) : totalDisponivel === 0 ? (
         <div className="px-4 py-10 text-center">
           <p className="text-sm text-texto-secundario">
-            Todos os exercícios já foram adicionados.
+            {textoVazio ?? (modo === "selecionar"
+              ? "Nenhum exercício disponível para esta troca."
+              : "Todos os exercícios já foram adicionados.")}
           </p>
         </div>
       ) : (
@@ -260,7 +273,7 @@ export function PickerExercicios({
                       "
                       aria-hidden="true"
                     >
-                      <Icone nome="mais" tamanho={16} />
+                      <Icone nome={modo === "selecionar" ? "setaDireita" : "mais"} tamanho={16} />
                     </span>
                   </button>
                 ))}

@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import type { DadosFrequencia } from "@/domain/tipos";
+import {
+  contarDiasComTreinoNaSemana,
+  toISODate,
+} from "@/interface/page/area-logada/estatisticas/utils";
 import { Icone } from "@/interface/widget/svg/Icone";
 
 interface PropriedadesStripSemanal {
   dados: DadosFrequencia;
+  /** Meta de treinos por semana escolhida no onboarding. Sem ela, o
+      denominador segue sendo os 7 dias da semana. */
+  metaSemanal?: number;
   aoAbrirDetalhe?: () => void;
-}
-
-function toISODateLocal(data: Date): string {
-  const ano = data.getFullYear();
-  const mes = String(data.getMonth() + 1).padStart(2, "0");
-  const dia = String(data.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
 }
 
 /**
@@ -19,7 +19,11 @@ function toISODateLocal(data: Date): string {
  * O calendário completo (7 dias, mês) vive na tela de detalhe,
  * aberta pelo tap; aqui mostramos só a essência: streak e semana.
  */
-export function StripSemanal({ dados, aoAbrirDetalhe }: PropriedadesStripSemanal) {
+export function StripSemanal({
+  dados,
+  metaSemanal,
+  aoAbrirDetalhe,
+}: PropriedadesStripSemanal) {
   const registrosPorData = useMemo(() => {
     const mapa = new Map<string, boolean>();
     for (const registro of dados.registros) mapa.set(registro.data, registro.completou);
@@ -32,24 +36,20 @@ export function StripSemanal({ dados, aoAbrirDetalhe }: PropriedadesStripSemanal
     for (let indice = 0; indice < 365; indice++) {
       const data = new Date(hoje);
       data.setDate(data.getDate() - indice);
-      if (registrosPorData.get(toISODateLocal(data))) total++;
+      if (registrosPorData.get(toISODate(data))) total++;
       else if (indice > 0) break;
     }
     return total;
   }, [registrosPorData]);
 
-  const treinosSemana = useMemo(() => {
-    let total = 0;
-    const hoje = new Date();
-    for (let indice = 0; indice < 7; indice++) {
-      const data = new Date(hoje);
-      data.setDate(data.getDate() - indice);
-      if (registrosPorData.get(toISODateLocal(data))) total++;
-    }
-    return total;
-  }, [registrosPorData]);
+  const treinosSemana = useMemo(
+    () => contarDiasComTreinoNaSemana(dados),
+    [dados],
+  );
 
   const temStreak = streak > 0;
+  const meta = metaSemanal ?? 7;
+  const metaBatida = metaSemanal !== undefined && treinosSemana >= metaSemanal;
 
   const conteudo = (
     <>
@@ -77,7 +77,11 @@ export function StripSemanal({ dados, aoAbrirDetalhe }: PropriedadesStripSemanal
           )}
         </p>
         <p className="mt-1 text-xs leading-tight tabular-nums text-texto-sutil">
-          {treinosSemana}/7 esta semana
+          <span className={metaBatida ? "font-bold text-grafico-forte" : undefined}>
+            {treinosSemana}/{meta}
+          </span>{" "}
+          esta semana
+          {metaBatida && " · meta batida 🎯"}
         </p>
       </div>
 

@@ -185,12 +185,20 @@ export function DetalheHistoricoPage({
         <div className="space-y-3">
           {exerciciosComSeries.map((registroExercicio, indice) => {
             const exercicio = exercicios.find((item) => item.id === registroExercicio.exercicioId);
+            const exercicioPlanejado = registroExercicio.exercicioPlanejadoId
+              ? exercicios.find((item) => item.id === registroExercicio.exercicioPlanejadoId)
+              : undefined;
             return (
               <BlocoExercicioHistorico
                 key={`${registroExercicio.exercicioId}-${indice}`}
                 registro={registroExercicio}
                 nome={exercicio?.nome ?? "Exercício removido"}
                 grupoMuscular={exercicio?.grupoMuscular}
+                nomePlanejado={
+                  registroExercicio.exercicioPlanejadoId
+                    ? exercicioPlanejado?.nome ?? "Exercício planejado removido"
+                    : undefined
+                }
                 aoVerGrafico={() =>
                   aoNavegar("graficoProgressao", {
                     exercicioId: registroExercicio.exercicioId,
@@ -250,11 +258,13 @@ function BlocoExercicioHistorico({
   registro,
   nome,
   grupoMuscular,
+  nomePlanejado,
   aoVerGrafico,
 }: {
   registro: RegistroExercicio;
   nome: string;
   grupoMuscular?: string;
+  nomePlanejado?: string;
   aoVerGrafico: () => void;
 }) {
   return (
@@ -263,6 +273,9 @@ function BlocoExercicioHistorico({
         <div className="min-w-0">
           <h2 className="font-display text-base font-semibold text-texto-primario">{nome}</h2>
           {grupoMuscular ? <p className="mt-1 text-xs text-texto-sutil">{grupoMuscular}</p> : null}
+          {nomePlanejado ? (
+            <p className="mt-1 text-xs text-texto-secundario">Planejado: {nomePlanejado}</p>
+          ) : null}
         </div>
         <button
           type="button"

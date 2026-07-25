@@ -1,6 +1,6 @@
 import type { NomeIcone } from "@/domain/tipos";
 import { Icone, IconeFicha } from "@/interface/widget/svg/Icone";
-import { MenuAcoes } from "@/interface/widget/menu/MenuAcoes";
+import { MenuAcoes, type AcaoMenu } from "@/interface/widget/menu/MenuAcoes";
 import type { ProgressoSessao } from "./hooks/useSessaoTreino";
 import { useTempoDecorrido } from "./hooks/useTempoDecorrido";
 
@@ -10,6 +10,11 @@ interface HeaderExecucaoProps {
   emojiFicha?: string;
   iniciadoEm: string;
   progresso: ProgressoSessao;
+  temExercicioAtual: boolean;
+  exercicioIniciado: boolean;
+  aoTrocarExercicio: () => void;
+  aoPularExercicio: () => void;
+  aoAdicionarExercicio: () => void;
   aoFinalizar: () => void;
   aoAbandonar: () => void;
 }
@@ -24,6 +29,11 @@ export function HeaderExecucao({
   emojiFicha,
   iniciadoEm,
   progresso,
+  temExercicioAtual,
+  exercicioIniciado,
+  aoTrocarExercicio,
+  aoPularExercicio,
+  aoAdicionarExercicio,
   aoFinalizar,
   aoAbandonar,
 }: HeaderExecucaoProps) {
@@ -40,6 +50,40 @@ export function HeaderExecucao({
   // Com tudo concluído, finalizar não é "antes" — é o encerramento natural.
   const tudoConcluido =
     progresso.itensTotal > 0 && progresso.itensConcluidos === progresso.itensTotal;
+
+  const itensMenu: AcaoMenu[] = [
+    ...(temExercicioAtual
+      ? [
+          {
+            label: "Trocar exercício hoje",
+            icone: "trocar",
+            onClick: aoTrocarExercicio,
+          },
+          {
+            label: exercicioIniciado ? "Parar exercício por hoje" : "Pular exercício hoje",
+            icone: exercicioIniciado ? "pausar" : "setaDireita",
+            onClick: aoPularExercicio,
+          },
+        ]
+      : []),
+    {
+      label: "Adicionar exercício depois",
+      icone: "mais",
+      onClick: aoAdicionarExercicio,
+    },
+    {
+      label: tudoConcluido ? "Finalizar" : "Finalizar antes",
+      icone: "check",
+      onClick: aoFinalizar,
+      separadorAntes: true,
+    },
+    {
+      label: "Abandonar treino",
+      icone: "sair",
+      onClick: aoAbandonar,
+      perigo: true,
+    },
+  ];
 
   return (
     <header className="sticky top-0 z-20 border-b border-borda-suave bg-fundo/95 pt-[var(--safe-top)] backdrop-blur-sm">
@@ -59,19 +103,8 @@ export function HeaderExecucao({
 
           <MenuAcoes
             rotulo="Ações do treino"
-            itens={[
-              {
-                label: tudoConcluido ? "Finalizar" : "Finalizar antes",
-                icone: "check",
-                onClick: aoFinalizar,
-              },
-              {
-                label: "Abandonar treino",
-                icone: "sair",
-                onClick: aoAbandonar,
-                perigo: true,
-              },
-            ]}
+            itens={itensMenu}
+            largura={264}
           />
         </div>
 

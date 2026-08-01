@@ -580,6 +580,20 @@ export class PezzoStateManager {
     return `Treino ${fichasExistentes.length + 1}`;
   }
 
+  /** Gerar nome único para programa */
+  gerarNomePrograma(): string {
+    const nomesExistentes = new Set(
+      this.estado.programas.map((programa) => programa.nome.trim().toLocaleLowerCase())
+    );
+
+    let numero = 1;
+    while (nomesExistentes.has(`programa ${numero}`)) {
+      numero += 1;
+    }
+
+    return `Programa ${numero}`;
+  }
+
   /** Obter grupos musculares usados nas fichas */
   getGruposMusculares(): string[] {
     const grupos = new Set<string>();

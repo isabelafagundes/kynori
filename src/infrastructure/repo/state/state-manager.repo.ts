@@ -78,6 +78,7 @@ export interface StateManagerRepository {
   adicionarTreino(registro: Omit<RegistroTreino, "id">): RegistroTreino;
 
   // Utilitários
+  gerarNomePrograma(): string;
   gerarNomeFicha(): string;
   inscrever(callback: () => void): () => void;
 }
@@ -140,6 +141,7 @@ export const stateManagerRepository: StateManagerRepository = {
   adicionarTreino: (registro) => pezzoState.adicionarTreino(registro),
 
   // Utilitários
+  gerarNomePrograma: () => pezzoState.gerarNomePrograma(),
   gerarNomeFicha: () => pezzoState.gerarNomeFicha(),
   inscrever: (callback) => pezzoState.inscrever(callback),
 };

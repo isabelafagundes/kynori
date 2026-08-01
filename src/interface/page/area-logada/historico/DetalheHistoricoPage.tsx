@@ -15,6 +15,7 @@ import { EstadoVazio } from "@/interface/widget/EstadoVazio";
 import { Botao } from "@/interface/widget/botao/Botao";
 import { criarIdGraficoCardio } from "@/interface/widget/grafico/cardioGraficoId";
 import { Icone, IconeFicha } from "@/interface/widget/svg/Icone";
+import { interpretarDataLocal } from "@/interface/util/data-local";
 import { formatarNumeroBR } from "@/interface/util/numero";
 
 interface DetalheHistoricoPageProps {
@@ -27,7 +28,7 @@ interface DetalheHistoricoPageProps {
 }
 
 function formatarData(dataISO: string) {
-  return new Date(dataISO).toLocaleDateString("pt-BR", {
+  return interpretarDataLocal(dataISO).toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
     month: "long",

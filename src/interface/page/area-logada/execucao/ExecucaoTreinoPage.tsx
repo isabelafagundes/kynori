@@ -25,6 +25,7 @@ import { OverlayPularExercicio } from "./OverlayPularExercicio";
 import { useSessaoTreino } from "./hooks/useSessaoTreino";
 import { useTimerDescanso } from "./hooks/useTimerDescanso";
 import { useInterceptarVoltar } from "./hooks/useInterceptarVoltar";
+import { usePreferenciasExecucao } from "@/interface/hook/usePreferenciasExecucao";
 import { nomeDoItem } from "./nomeItem";
 import { ativacoesDoExercicio } from "@/domain/ativacao-muscular";
 import { MapaMuscular } from "@/interface/widget/musculatura/MapaMuscular";
@@ -35,6 +36,9 @@ interface ExecucaoTreinoPageProps {
   aoVoltar: () => void;
 }
 
+/** Espera antes do avanço automático, pra dar tempo do check animar. */
+const MS_AVANCO_AUTOMATICO = 450;
+
 /** Execução de treino paginada por item da ficha (exercício ou cardio, na
     ordem definida na criação). Mobile navega por chips + footer; no md+ os
     chips viram rail lateral; no lg+ entra o painel de contexto à direita. */
@@ -43,6 +47,26 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
   const segundosDescanso = sessao.configuracaoAtual?.descansoSegundos ?? 0;
   const timer = useTimerDescanso(segundosDescanso);
   const { resetar: resetarTimer, rodando: timerRodando, segundosRestantes: timerSegundosRestantes } = timer;
+
+  const preferencias = usePreferenciasExecucao();
+  // Lido via ref para não recriar callbacks/efeitos a cada mudança de preferência.
+  const preferenciasRef = useRef(preferencias);
+  useEffect(() => {
+    preferenciasRef.current = preferencias;
+  }, [preferencias]);
+
+  // Feedback tátil gated pela preferência de vibração (referência estável).
+  const feedbackTatil = useMemo(
+    () => ({
+      impactoMedio: () => {
+        if (preferenciasRef.current.vibracao) void appModule.feedbackTatil.impactoMedio();
+      },
+      sucesso: () => {
+        if (preferenciasRef.current.vibracao) void appModule.feedbackTatil.sucesso();
+      },
+    }),
+    []
+  );
 
   const [confirmarFinalizarAberto, setConfirmarFinalizarAberto] = useState(false);
   const [confirmarCancelarAberto, setConfirmarCancelarAberto] = useState(false);
@@ -86,11 +110,11 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
   // permanece disponível para que o usuário possa iniciá-lo novamente.
   useEffect(() => {
     if (rodandoAnterior.current && !timerRodando && timerSegundosRestantes === 0) {
-      void appModule.feedbackTatil.sucesso();
+      feedbackTatil.sucesso();
       resetarTimer();
     }
     rodandoAnterior.current = timerRodando;
-  }, [resetarTimer, timerRodando, timerSegundosRestantes]);
+  }, [feedbackTatil, resetarTimer, timerRodando, timerSegundosRestantes]);
 
   const catalogo = stateManagerRepository.listarTodosExercicios();
   const tiposCardio = stateManagerRepository.listarTiposCardio();
@@ -166,11 +190,13 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
       cardio: registro.cardio,
     });
     void sessao.encerrar();
+    resetarTimer(); // para o descanso: sem isso ele re-renderiza a cada segundo.
     setRegistroFinalizado(registroSalvo);
-    setEtapaResultado("celebracao");
+    // Sem a animação, pula a celebração e vai direto ao resumo do treino.
+    setEtapaResultado(preferencias.animacaoFinalizar ? "celebracao" : "resumo");
     setConfirmarFinalizarAberto(false);
     setFinalizadoAberto(true);
-    void appModule.feedbackTatil.sucesso();
+    feedbackTatil.sucesso();
   };
 
   const descartarTreino = () => {
@@ -190,9 +216,27 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     const indiceItem = sessao.indiceAtual;
     const jaConcluida = exercicioAtual?.concluidas.has(indiceSerie);
     sessao.marcarConcluida(indiceItem, indiceSerie);
-    if (!jaConcluida) {
-      void appModule.feedbackTatil.impactoMedio();
-      if (segundosDescanso > 0) timer.reiniciar();
+    if (jaConcluida) return;
+
+    feedbackTatil.impactoMedio();
+
+    // O exercício fica completo com esta série? (concluidas ainda não refletiu
+    // o marcarConcluida acima, então projeta o conjunto resultante.)
+    const totalSeries = exercicioAtual?.series.length ?? 0;
+    const concluidasProjetadas = new Set(exercicioAtual?.concluidas);
+    concluidasProjetadas.add(indiceSerie);
+    const exercicioCompleto = totalSeries > 0 && concluidasProjetadas.size === totalSeries;
+    const podeAvancar =
+      preferencias.avancoAutomatico && exercicioCompleto && !sessao.ultimoItem;
+
+    if (podeAvancar) {
+      // Não faz sentido descansar após a última série: avança para o próximo.
+      window.setTimeout(() => sessao.proximo(), MS_AVANCO_AUTOMATICO);
+    } else if (preferencias.descansoAutomatico && segundosDescanso > 0) {
+      timer.reiniciar();
+    }
+
+    if (preferencias.avisoDesfazer) {
       setDesfazerAlvo({
         texto: `Série ${indiceSerie + 1} concluída`,
         executar: () => {
@@ -205,7 +249,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
 
   const concluirCardio = (id: string) => {
     if (cardioAtual && !cardioAtual.concluido) {
-      void appModule.feedbackTatil.impactoMedio();
+      feedbackTatil.impactoMedio();
     }
     sessao.marcarCardioConcluido(id);
   };
@@ -218,7 +262,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     );
     if (resultado === "trocado") {
       timer.resetar();
-      void appModule.feedbackTatil.impactoMedio();
+      feedbackTatil.impactoMedio();
     }
     return resultado;
   };
@@ -230,7 +274,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     );
     if (resultado === "trocado") {
       timer.resetar();
-      void appModule.feedbackTatil.impactoMedio();
+      feedbackTatil.impactoMedio();
     }
     return resultado;
   };
@@ -245,7 +289,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
       configuracao
     );
     if (resultado === "adicionado") {
-      void appModule.feedbackTatil.impactoMedio();
+      feedbackTatil.impactoMedio();
     }
     return resultado;
   };
@@ -262,7 +306,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
           : "Exercício pulado hoje",
       executar: () => sessao.desfazerPularExercicio(alteracao),
     });
-    void appModule.feedbackTatil.impactoMedio();
+    feedbackTatil.impactoMedio();
   };
 
   if (sessao.itens.length === 0) {

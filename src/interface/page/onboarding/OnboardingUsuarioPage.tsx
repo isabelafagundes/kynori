@@ -14,16 +14,17 @@ import { AVATAR_EMOJI_PADRAO } from "@/domain/usuario";
 import { BoasVindasPage } from "./BoasVindasPage";
 import { PerfilPage } from "./PerfilPage";
 import { MetaSemanalPage } from "./MetaSemanalPage";
+import { TemaPage } from "./TemaPage";
 import { ContratoTutorialPage } from "./ContratoTutorialPage";
 
 interface OnboardingUsuarioPageProps {
   aoConcluir: () => void;
 }
 
-type Etapa = "boas-vindas" | "perfil" | "meta" | "contrato";
+type Etapa = "boas-vindas" | "perfil" | "meta" | "tema" | "contrato";
 
 /** Etapas com barra de progresso, na ordem em que aparecem. */
-const ETAPAS_WIZARD: Etapa[] = ["perfil", "meta", "contrato"];
+const ETAPAS_WIZARD: Etapa[] = ["perfil", "meta", "tema", "contrato"];
 const TOTAL_ETAPAS = ETAPAS_WIZARD.length;
 
 interface RespostasOnboarding {
@@ -85,8 +86,19 @@ export function OnboardingUsuarioPage({
         aoVoltar={() => setEtapa("perfil")}
         aoContinuar={(metaSemanal) => {
           setRespostas((atual) => ({ ...atual, metaSemanal }));
-          setEtapa("contrato");
+          setEtapa("tema");
         }}
+      />
+    );
+  }
+
+  if (etapa === "tema") {
+    return (
+      <TemaPage
+        passo={indiceDoPasso}
+        total={TOTAL_ETAPAS}
+        aoVoltar={() => setEtapa("meta")}
+        aoContinuar={() => setEtapa("contrato")}
       />
     );
   }
@@ -96,7 +108,7 @@ export function OnboardingUsuarioPage({
       passo={indiceDoPasso}
       total={TOTAL_ETAPAS}
       primeiroNome={respostas.nome.trim().split(/\s+/)[0] ?? ""}
-      aoVoltar={() => setEtapa("meta")}
+      aoVoltar={() => setEtapa("tema")}
       aoIniciarTutorial={() => concluir(respostas, true)}
       aoPularTutorial={() => concluir(respostas, false)}
     />

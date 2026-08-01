@@ -43,7 +43,7 @@ export function OverlayCompartilharProgressao({
             type="button"
             onClick={aoFechar}
             aria-label="Voltar para a progressão"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-texto-secundario transition-colors hover:bg-superficie-hover hover:text-texto-primario"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-texto-secundario transition-colors hover:bg-superficie-hover hover:text-texto-primario focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
           >
             <Icone nome="setaEsquerda" tamanho={18} />
           </button>

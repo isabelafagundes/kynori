@@ -1,8 +1,8 @@
 import type { ResumoCompartilhamento } from "@/application/compartilhamento/calcular-resumo-treino";
-import type { Ficha, RegistroTreino } from "@/domain/tipos";
-import { formatarNumeroBR } from "@/interface/util/numero";
+import type { Ficha, RegistroTreino, TipoCardioDef } from "@/domain/tipos";
 import { desenharFundo } from "@/interface/widget/fundo-resultado/fundo-resultado.renderer";
 import { velaFoto, type SelecaoFundo } from "@/interface/widget/fundo-resultado/presets-fundo";
+import { formatarCardiosResultado, type CardioResultado } from "./formatar-cardios-resultado";
 
 const L = 1080;
 const A = 1350;
@@ -36,10 +36,64 @@ function desenharGrupos(ctx: CanvasRenderingContext2D, grupos: string[], x0: num
   ctx.textBaseline = "alphabetic";
 }
 
-export async function desenharCard(registro: RegistroTreino, ficha: Ficha, resumo: ResumoCompartilhamento, fundo: SelecaoFundo, grupos: string[]): Promise<Blob> {
+interface ChipCardio {
+  rotulo: string;
+  largura: number;
+}
+
+function prepararChipsCardio(ctx: CanvasRenderingContext2D, cardios: CardioResultado[], larguraMaxima: number): ChipCardio[] {
+  ctx.font = "500 24px system-ui";
+  return cardios.map((cardio) => {
+    const rotuloCompleto = `${cardio.nome}${cardio.detalhes ? ` · ${cardio.detalhes}` : ""}`;
+    const rotulo = textoTruncado(ctx, rotuloCompleto, larguraMaxima - 42);
+    return { rotulo, largura: ctx.measureText(rotulo).width + 42 };
+  });
+}
+
+function contarLinhasChips(chips: ChipCardio[], larguraMaxima: number): number {
+  if (!chips.length) return 0;
+  let linhas = 1;
+  let larguraLinha = 0;
+  for (const chip of chips) {
+    const proximaLargura = larguraLinha ? larguraLinha + 12 + chip.largura : chip.largura;
+    if (proximaLargura > larguraMaxima && larguraLinha) {
+      linhas += 1;
+      larguraLinha = chip.largura;
+    } else {
+      larguraLinha = proximaLargura;
+    }
+  }
+  return linhas;
+}
+
+function desenharChipsCardio(ctx: CanvasRenderingContext2D, chips: ChipCardio[], x0: number, y0: number, larguraMaxima: number) {
+  const h = 44;
+  let x = x0;
+  let y = y0;
+  ctx.font = "500 24px system-ui";
+  ctx.textBaseline = "middle";
+  for (const chip of chips) {
+    if (x > x0 && x + chip.largura > x0 + larguraMaxima) {
+      x = x0;
+      y += h + 12;
+    }
+    ctx.beginPath(); ctx.roundRect(x, y, chip.largura, h, 22);
+    ctx.fillStyle = "rgba(255,255,255,.16)"; ctx.fill();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,255,255,.3)"; ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.92)"; ctx.fillText(chip.rotulo, x + 21, y + h / 2 + 1);
+    x += chip.largura + 12;
+  }
+  ctx.textBaseline = "alphabetic";
+}
+
+export async function desenharCard(registro: RegistroTreino, ficha: Ficha, resumo: ResumoCompartilhamento, fundo: SelecaoFundo, grupos: string[], tiposCardio: TipoCardioDef[] = []): Promise<Blob> {
   await document.fonts?.ready;
   const canvas = document.createElement("canvas"); canvas.width = L; canvas.height = A;
   const ctx = canvas.getContext("2d"); if (!ctx) throw new Error("Canvas indisponível");
+  const cardios = formatarCardiosResultado(registro.cardio, tiposCardio);
+  const larguraConteudo = L - 96 - 112;
+  const chipsCardio = prepararChipsCardio(ctx, cardios, larguraConteudo);
+  const linhasCardio = contarLinhasChips(chipsCardio, larguraConteudo);
 
   // Fundo: preset (gradiente) ou foto (cover).
   if (fundo.tipo === "foto") { desenharCover(ctx, await carregarImagem(fundo.dataUrl), L, A); }
@@ -55,15 +109,24 @@ export async function desenharCard(registro: RegistroTreino, ficha: Ficha, resum
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#fff"; ctx.font = "700 32px system-ui"; ctx.textAlign = "left"; ctx.fillText("KYNORI", 88, 110);
   ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.font = "600 22px system-ui"; ctx.textAlign = "right"; ctx.fillText("TREINO CONCLUÍDO", 992, 108);
-  ctx.textAlign = "center"; ctx.font = "150px system-ui"; ctx.fillText(ficha.emoji || "💪", L / 2, 470);
+  if (fundo.tipo !== "foto") {
+    ctx.textAlign = "center"; ctx.font = "150px system-ui"; ctx.fillText(ficha.emoji || "💪", L / 2, 470);
+  }
   ctx.textAlign = "left";
 
   // Painel glass inferior (sem blur no canvas: painel translúcido).
-  const px = 48, py = 735, pw = L - 96, ph = A - py - 48, pad = 56, cx = px + pad;
+  const px = 48, py = 735 - Math.max(0, linhasCardio - 1) * 56, pw = L - 96, ph = A - py - 48, pad = 56, cx = px + pad;
   ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 28);
   ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.stroke();
 
-  ctx.fillStyle = "#fff"; ctx.font = "600 58px system-ui"; ctx.fillText(textoTruncado(ctx, ficha.nome, pw - pad * 2), cx, py + 96);
+  ctx.fillStyle = "#fff";
+  const tituloX = fundo.tipo === "foto" ? cx + 72 : cx;
+  if (fundo.tipo === "foto") {
+    ctx.font = "48px system-ui";
+    ctx.fillText(ficha.emoji || "💪", cx, py + 94);
+  }
+  ctx.font = "600 58px system-ui";
+  ctx.fillText(textoTruncado(ctx, ficha.nome, pw - pad * 2 - (tituloX - cx)), tituloX, py + 96);
   ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.font = "400 27px system-ui"; ctx.fillText(new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date(registro.finalizadoEm)), cx, py + 140);
 
   if (grupos.length) desenharGrupos(ctx, grupos, cx, py + 170);
@@ -84,12 +147,11 @@ export async function desenharCard(registro: RegistroTreino, ficha: Ficha, resum
     ctx.fillStyle = "rgba(255,255,255,.65)"; ctx.font = "400 24px system-ui"; ctx.fillText(m.r, x, yV + 32);
   });
 
-  if (resumo.totalCardios) {
-    const linhas = Math.ceil(metricas.length / 2);
-    const yC = yDiv + 70 + (linhas - 1) * 88 + 66;
-    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.font = "600 22px system-ui"; ctx.fillText("CARDIO", cx, yC);
-    ctx.fillStyle = "#fff"; ctx.font = "600 30px system-ui";
-    ctx.fillText(`${formatarNumeroBR(resumo.duracaoCardioMinutos)} min${resumo.distanciaCardioKm ? ` · ${formatarNumeroBR(resumo.distanciaCardioKm)} km` : ""}`, cx + 130, yC);
+  if (cardios.length) {
+    const yCardioDiv = yDiv + 200;
+    ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx, yCardioDiv); ctx.lineTo(px + pw - pad, yCardioDiv); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.6)"; ctx.font = "600 22px system-ui"; ctx.fillText("CARDIO", cx, yCardioDiv + 34);
+    desenharChipsCardio(ctx, chipsCardio, cx, yCardioDiv + 52, larguraConteudo);
   }
 
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Não foi possível gerar a imagem")), "image/jpeg", .92));

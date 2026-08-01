@@ -143,15 +143,24 @@ function desenharPainel(
   const graficoLargura = largura - 108;
   const maiorValor = Math.max(1, ...progressao.pontos.map((ponto) => ponto.valor));
   const espaco = 18;
-  const larguraBarra = Math.max(
-    28,
-    (graficoLargura - espaco * (progressao.pontos.length - 1)) /
-      progressao.pontos.length,
+  // Cap na largura para poucos pontos não virarem barras gigantes; o grupo
+  // fica centralizado no gráfico.
+  const larguraBarra = Math.min(
+    150,
+    Math.max(
+      28,
+      (graficoLargura - espaco * (progressao.pontos.length - 1)) /
+        progressao.pontos.length,
+    ),
   );
+  const larguraGrupo =
+    larguraBarra * progressao.pontos.length +
+    espaco * (progressao.pontos.length - 1);
+  const graficoOffsetX = graficoX + Math.max(0, (graficoLargura - larguraGrupo) / 2);
 
   progressao.pontos.forEach((ponto, indice) => {
     const alturaBarra = Math.max(26, (ponto.valor / maiorValor) * 220);
-    const barraX = graficoX + indice * (larguraBarra + espaco);
+    const barraX = graficoOffsetX + indice * (larguraBarra + espaco);
     const barraY = graficoY + 225 - alturaBarra;
     contexto.beginPath();
     contexto.roundRect(barraX, barraY, larguraBarra, alturaBarra, [12, 12, 0, 0]);

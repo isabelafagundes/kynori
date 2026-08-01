@@ -2,7 +2,7 @@ import { Icone } from "@/interface/widget/svg/Icone";
 
 interface PropriedadesFaixaMetricas {
   totalTreinos: number;
-  /** Texto já formatado do último treino (ex.: "Ontem", "4d atras", "—") */
+  /** Texto já formatado do último treino (ex.: "Ontem", "há 4 dias", "—") */
   ultimoTreinoLabel: string;
   treinadasSemana: number;
   /** Meta da semana = nº de fichas do programa */

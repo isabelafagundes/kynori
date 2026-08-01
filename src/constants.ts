@@ -31,4 +31,6 @@ export const STORAGE_KEYS = {
   INSTALACAO_ID: "trainify_instalacao_id",
   // Barra lateral do desktop recolhida (só ícones)
   SIDEBAR_RECOLHIDA: "trainify_sidebar_recolhida",
+  // Preferências de comportamento da execução de treino (toggles)
+  PREFERENCIAS_EXECUCAO: "trainify_preferencias_execucao",
 } as const;

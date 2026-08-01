@@ -41,6 +41,21 @@ function volumeDaSessao(registro: RegistroTreino): number {
   );
 }
 
+/** Minutos totais de treino no histórico (finalizadoEm − iniciadoEm). */
+export function calcularTempoTotalMinutos(historico: RegistroTreino[]): number {
+  return historico.reduce((total, registro) => {
+    const inicio = new Date(registro.iniciadoEm).getTime();
+    const fim = new Date(registro.finalizadoEm).getTime();
+    if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) return total;
+    return total + (fim - inicio) / 60000;
+  }, 0);
+}
+
+/** Volume total (kg movimentados) somado em todo o histórico. */
+export function calcularVolumeTotalKg(historico: RegistroTreino[]): number {
+  return historico.reduce((total, registro) => total + volumeDaSessao(registro), 0);
+}
+
 /** Conta treinos realizados no mês de referência (mês corrente por padrão) */
 export function calcularTreinosNoMes(
   historico: RegistroTreino[],

@@ -42,6 +42,17 @@
   --color-perigo-hover: oklch(0.385 0.090 35);
   --color-perigo-suave: oklch(0.930 0.025 35);
 
+  /* Relevo da grade semanal.
+     A força das sombras muda por tema (fundo escuro aguenta preto forte,
+     fundo claro não), então cada tema sobrescreve estes três valores.
+     As cores do dia concluído derivam de `--color-acento` via color-mix,
+     funcionando tanto com acento escuro (temas claros) quanto claro
+     (temas escuros) sem precisar de token por tema. */
+  --sombra-recesso: inset 0 2px 4px oklch(0 0 0 / 0.14), inset 0 -1px 0 oklch(1 0 0 / 0.5);
+  --sombra-elevacao: 0 4px 8px oklch(0 0 0 / 0.16);
+  --realce-topo: oklch(1 0 0 / 0.45);
+  --dia-vazio-fundo: oklch(0.930 0.008 65);
+
   /* Fundo decorativo do app */
   --background-app-a: oklch(0.91 0.035 55 / 0.5);
   --background-app-b: oklch(0.90 0.03 40 / 0.4);
@@ -252,19 +263,6 @@ html {
   }
 }
 
-/* Fogo flamejante sutil (para streak ativo) */
-@keyframes flame-subtle {
-  0%, 100% {
-    transform: scale(1) rotate(0deg);
-  }
-  25% {
-    transform: scale(1.05) rotate(-2deg);
-  }
-  75% {
-    transform: scale(1.05) rotate(2deg);
-  }
-}
-
 /* Count up suave para números */
 @keyframes count-up {
   0% {
@@ -274,16 +272,6 @@ html {
   100% {
     transform: translateY(0);
     opacity: 1;
-  }
-}
-
-/* Highlight suave para próxima ficha */
-@keyframes highlight-pulse {
-  0%, 100% {
-    background-color: oklch(0.935 0.014 65 / 0.3);
-  }
-  50% {
-    background-color: oklch(0.935 0.014 65 / 0.5);
   }
 }
 
@@ -321,14 +309,6 @@ html {
   animation: checkBounce 0.5s ease-out;
 }
 
-.animate-flame {
-  animation: flame-subtle 3s ease-in-out infinite;
-}
-
-.animate-highlight-pulse {
-  animation: highlight-pulse 3s ease-in-out infinite;
-}
-
 /* Animations utilities compatíveis com Tailwind */
 .animate-in {
   animation-fill-mode: both;
@@ -340,6 +320,36 @@ html {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.2s ease-in forwards;
 }
 
 @keyframes slide-up {
@@ -386,53 +396,63 @@ html {
 .stagger-3 { animation-delay: 0.15s; }
 .stagger-4 { animation-delay: 0.2s; }
 
-/* Shimmer effect para progress bars completas */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
+/* ── Grade semanal da home ──
+   O estado é carregado pela forma, não só pela cor: dia vazio é uma
+   cavidade escavada (inner shadow), dia concluído é um bloco chapado de
+   acento. O concluído já teve relevo de tecla extrudada, mas o efeito
+   destoava dos cards planos da home e foi removido — o contraste
+   cheio × cavado continua legível sob daltonismo. */
+.dia-semana {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+
+.dia-semana-vazio {
+  background-color: var(--dia-vazio-fundo);
+  box-shadow: var(--sombra-recesso);
+  color: var(--color-texto-sutil);
+}
+
+/* Hoje ainda não treinado: mesma cavidade, com anel de contorno. */
+.dia-semana-hoje {
+  background-color: var(--dia-vazio-fundo);
+  box-shadow: var(--sombra-recesso), 0 0 0 1.5px var(--color-borda-forte);
+  color: var(--color-texto-secundario);
+  font-weight: 700;
+}
+
+.dia-semana-feito {
+  background-color: var(--color-acento);
+  color: var(--color-texto-invertido);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dia-semana {
+    transition: none;
   }
 }
 
-.animate-shimmer {
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-/* Shimmer para botão de próxima ficha */
-@keyframes shimmer-btn {
-  0% {
-    transform: translateX(-100%) skewX(-12deg);
-  }
-  100% {
-    transform: translateX(200%) skewX(-12deg);
-  }
-}
-
-.animate-shimmer-btn {
-  animation: shimmer-btn 2.5s ease-in-out infinite;
-}
-
-/* Letreiro para metadados que não cabem em cards compactos. A segunda cópia
-   torna a repetição contínua, como em um painel de transporte. */
-@keyframes texto-letreiro {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-texto-letreiro {
-  animation: texto-letreiro 9s linear infinite;
-  will-change: transform;
-}
-
-.texto-letreiro-com-fade {
-  -webkit-mask-image: linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent);
-  mask-image: linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent);
+/* ── Card de destaque (próximo treino na home) ──
+   Mesma base dos demais cards (`superficie`), com um véu de gradiente que
+   dilui o `acento-suave` (o tom limpo dos chips). Misturar o acento cru
+   embaçava os temas claros: acento quase preto + base creme = cinza sujo.
+   O acento-suave já é calibrado por tema, então o véu fica quente e limpo
+   tanto com acento escuro (temas claros) quanto claro (temas escuros). */
+.card-destaque {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in oklch, var(--color-acento-suave) 70%, var(--color-superficie)) 0%,
+      color-mix(in oklch, var(--color-acento-suave) 25%, var(--color-superficie)) 55%,
+      var(--color-superficie) 100%
+    );
 }
 
 /* ── Entrada orquestrada da home (fade + subida) ── */

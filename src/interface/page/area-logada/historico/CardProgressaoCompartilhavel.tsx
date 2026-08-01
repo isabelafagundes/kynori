@@ -70,7 +70,7 @@ export function CardProgressaoCompartilhavel({
                 <div key={ponto.id} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-[5%]">
                   <div className="flex min-h-0 flex-1 items-end justify-center">
                     <span
-                      className={`block w-full rounded-t-[4px] ${ultimo ? "bg-white shadow-sm" : "bg-white/45"}`}
+                      className={`block w-full max-w-[15cqw] rounded-t-[4px] ${ultimo ? "bg-white shadow-sm" : "bg-white/45"}`}
                       style={{ height: `${altura}%` }}
                     />
                   </div>

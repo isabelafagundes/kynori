@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { DadosFrequencia } from "@/domain/tipos";
 import {
   contarDiasComTreinoNaSemana,
+  inicioDaSemana,
   toISODate,
 } from "@/interface/page/area-logada/estatisticas/utils";
 import { Icone } from "@/interface/widget/svg/Icone";
@@ -14,98 +15,150 @@ interface PropriedadesStripSemanal {
   aoAbrirDetalhe?: () => void;
 }
 
+/** Iniciais dos dias, semana começando na segunda — mesma definição de
+    `inicioDaSemana`, a fonte única de "semana" do app. */
+const INICIAIS = ["S", "T", "Q", "Q", "S", "S", "D"] as const;
+const NOMES_DIA = [
+  "segunda-feira",
+  "terça-feira",
+  "quarta-feira",
+  "quinta-feira",
+  "sexta-feira",
+  "sábado",
+  "domingo",
+] as const;
+
+export type EstadoDia = "feito" | "hoje" | "vazio";
+
+export interface DiaDaSemana {
+  inicial: (typeof INICIAIS)[number];
+  iso: string;
+  estado: EstadoDia;
+  nome: (typeof NOMES_DIA)[number];
+}
+
+/** Os 7 dias da semana corrente (segunda a domingo) com o estado de treino
+    de cada um — compartilhado entre a grade do strip e o card de sequência. */
+export function construirDiasDaSemana(
+  dados: DadosFrequencia,
+  hoje: Date = new Date(),
+): DiaDaSemana[] {
+  const registrosPorData = new Map<string, boolean>();
+  for (const registro of dados.registros) {
+    registrosPorData.set(registro.data, registro.completou);
+  }
+
+  const referencia = new Date(hoje);
+  referencia.setHours(0, 0, 0, 0);
+  const isoHoje = toISODate(referencia);
+  const inicio = inicioDaSemana(referencia);
+
+  return INICIAIS.map((inicial, indice) => {
+    const data = new Date(inicio);
+    data.setDate(data.getDate() + indice);
+    const iso = toISODate(data);
+    const treinou = registrosPorData.get(iso) === true;
+    const estado: EstadoDia = treinou ? "feito" : iso === isoHoje ? "hoje" : "vazio";
+    return { inicial, iso, estado, nome: NOMES_DIA[indice] };
+  });
+}
+
 /**
- * Resumo sutil da sequência na home — uma única linha.
- * O calendário completo (7 dias, mês) vive na tela de detalhe,
- * aberta pelo tap; aqui mostramos só a essência: streak e semana.
+ * Grade da semana na home — 7 blocos, um por dia, com a inicial dentro.
+ *
+ * O estado é carregado pela forma, não só pela cor: dia vazio é uma
+ * cavidade escavada, dia treinado é um bloco extrudado. Isso mantém a
+ * leitura sob daltonismo e sob sol, e dispensa legenda.
+ *
+ * Fica sem container por decisão de composição: entre dois cards, ela é
+ * o respiro que separa a zona de ação (próximo treino) da zona de
+ * acervo (programa). O calendário completo vive na tela de detalhe.
  */
 export function StripSemanal({
   dados,
   metaSemanal,
   aoAbrirDetalhe,
 }: PropriedadesStripSemanal) {
-  const registrosPorData = useMemo(() => {
-    const mapa = new Map<string, boolean>();
-    for (const registro of dados.registros) mapa.set(registro.data, registro.completou);
-    return mapa;
-  }, [dados.registros]);
-
-  const streak = useMemo(() => {
-    let total = 0;
-    const hoje = new Date();
-    for (let indice = 0; indice < 365; indice++) {
-      const data = new Date(hoje);
-      data.setDate(data.getDate() - indice);
-      if (registrosPorData.get(toISODate(data))) total++;
-      else if (indice > 0) break;
-    }
-    return total;
-  }, [registrosPorData]);
+  const dias = useMemo(() => construirDiasDaSemana(dados), [dados]);
 
   const treinosSemana = useMemo(
     () => contarDiasComTreinoNaSemana(dados),
     [dados],
   );
 
-  const temStreak = streak > 0;
   const meta = metaSemanal ?? 7;
   const metaBatida = metaSemanal !== undefined && treinosSemana >= metaSemanal;
 
-  const conteudo = (
-    <>
-      <span
-        className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full transition-colors duration-300 ${
-          temStreak ? "bg-[oklch(0.88_0.05_45)]" : "bg-superficie-suave/80"
-        }`}
-      >
-        <Icone
-          nome="fogo"
-          tamanho={16}
-          className={temStreak ? "text-[oklch(0.45_0.16_40)] animate-flame" : "text-texto-sutil"}
-        />
-      </span>
-
-      <div className="flex-1 min-w-0">
-        <p className="truncate text-sm leading-tight text-texto-secundario">
-          {temStreak ? (
-            <>
-              <span className="font-bold tabular-nums text-texto-primario">{streak}</span>{" "}
-              {streak === 1 ? "dia" : "dias"} de sequência
-            </>
-          ) : (
-            "Comece sua sequência hoje"
-          )}
-        </p>
-        <p className="mt-1 text-xs leading-tight tabular-nums text-texto-sutil">
-          <span className={metaBatida ? "font-bold text-grafico-forte" : undefined}>
-            {treinosSemana}/{meta}
-          </span>{" "}
-          esta semana
-          {metaBatida && " · meta batida 🎯"}
-        </p>
-      </div>
-
-      {aoAbrirDetalhe && (
-        <span className="flex-shrink-0 text-texto-sutil" aria-hidden="true">
-          <Icone nome="setaDireita" tamanho={18} />
+  const grade = (
+    /* As células dividem a largura disponível em vez de terem largura fixa.
+       Com um teto por célula elas viravam ilhas: em tablet sobravam 58px de
+       vão entre blocos de 46px, e a faixa perdia a leitura de "uma semana".
+       Preenchendo, as bordas casam com as dos cards em qualquer largura. */
+    <div className="flex items-start gap-1.5 md:gap-2" aria-hidden="true">
+      {dias.map((dia) => (
+        <span
+          key={dia.iso}
+          className={`dia-semana h-11 flex-1 text-[0.8125rem] md:h-12 md:text-sm ${
+            dia.estado === "feito"
+              ? "dia-semana-feito"
+              : dia.estado === "hoje"
+                ? "dia-semana-hoje"
+                : "dia-semana-vazio"
+          }`}
+        >
+          {dia.inicial}
         </span>
-      )}
-    </>
+      ))}
+    </div>
   );
 
-  const classeBase =
-    "w-full bg-superficie rounded-2xl border border-borda px-4 py-3 flex items-center gap-3";
+  /* Leitura acessível equivalente à grade, que é decorativa para o leitor
+     de tela — repetir 7 blocos letra a letra não ajudaria ninguém. */
+  const resumoAcessivel = dias
+    .filter((dia) => dia.estado === "feito")
+    .map((dia) => dia.nome)
+    .join(", ");
+
+  const legenda = (
+    <div className="mt-3 flex items-center justify-between gap-3">
+      <span className="text-xs tabular-nums text-texto-sutil">
+        <span className={metaBatida ? "font-bold text-texto-primario" : undefined}>
+          {treinosSemana} de {meta}
+        </span>{" "}
+        {meta === 1 ? "dia" : "dias"} esta semana
+        {metaBatida && " · meta batida 🎯"}
+      </span>
+      {aoAbrirDetalhe && (
+        <span className="inline-flex flex-shrink-0 items-center gap-1 text-xs font-semibold text-texto-sutil">
+          Sequência
+          <Icone nome="setaDireita" tamanho={12} />
+        </span>
+      )}
+    </div>
+  );
+
+  const conteudo = (
+    <>
+      {grade}
+      {legenda}
+      <span className="sr-only">
+        {treinosSemana === 0
+          ? "Nenhum treino registrado esta semana."
+          : `Treinos esta semana: ${resumoAcessivel}. ${treinosSemana} de ${meta} dias.`}
+      </span>
+    </>
+  );
 
   return aoAbrirDetalhe ? (
     <button
       type="button"
       onClick={aoAbrirDetalhe}
       aria-label="Ver detalhes da sequência"
-      className={`${classeBase} text-left transition-colors duration-200 hover:bg-superficie-suave active:bg-superficie-suave/70 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-acento`}
+      className="w-full rounded-2xl py-1 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
     >
       {conteudo}
     </button>
   ) : (
-    <div className={classeBase}>{conteudo}</div>
+    <div className="py-1">{conteudo}</div>
   );
 }

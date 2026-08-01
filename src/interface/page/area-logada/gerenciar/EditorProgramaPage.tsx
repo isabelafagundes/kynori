@@ -2,7 +2,7 @@
    Editor de Programa — Criar/Editar Programas
    ═══════════════════════════════════════════ */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Programa } from "@/domain/tipos";
 import { exerciciosDaFicha } from "@/domain/ficha";
 import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
@@ -50,6 +50,7 @@ export function EditorProgramaPage({
   const [modalSelecionarFicha, setModalSelecionarFicha] = useState(false);
   const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
   const [fichaParaRemover, setFichaParaRemover] = useState<{ id: string; nome: string } | null>(null);
+  const inicializouNovoProgramaRef = useRef(false);
 
   // Snapshot dos campos no momento em que foram carregados/salvos, para detectar
   // alterações não salvas ao tentar fechar.
@@ -68,6 +69,7 @@ export function EditorProgramaPage({
   useEffect(() => {
     const carregarDados = () => {
       if (programaId) {
+        inicializouNovoProgramaRef.current = false;
         const prog = stateManagerRepository.obterProgramaPorId(programaId);
         if (prog) {
           setPrograma(prog);
@@ -76,12 +78,15 @@ export function EditorProgramaPage({
           setAtivo(prog.ativo);
           setBaseline(assinaturaPrograma(prog.nome, prog.descricao, prog.ativo));
         }
-      } else {
+      } else if (!inicializouNovoProgramaRef.current) {
         // Novo programa - começar como ativo se não houver outros
+        const nomeGerado = stateManagerRepository.gerarNomePrograma();
         const programaAtivo = stateManagerRepository.obterProgramaAtivo();
         const ativoInicial = !programaAtivo;
+        setNome(nomeGerado);
         setAtivo(ativoInicial);
-        setBaseline(assinaturaPrograma("", "", ativoInicial));
+        setBaseline(assinaturaPrograma(nomeGerado, "", ativoInicial));
+        inicializouNovoProgramaRef.current = true;
       }
     };
 
@@ -154,6 +159,15 @@ export function EditorProgramaPage({
     }
 
     aoVoltar();
+  };
+
+  const handleAbrirNovaFicha = () => {
+    if (!nome.trim()) {
+      showError("Digite um nome para o programa antes de criar fichas.");
+      return;
+    }
+
+    setModalNovaFicha(true);
   };
 
   const handleCopiarProgramaExistente = (programaId: string) => {
@@ -277,7 +291,7 @@ export function EditorProgramaPage({
                 variante="fantasma"
                 tamanho="compacto"
                 icone={<Icone nome="mais" tamanho={14} />}
-                onClick={() => setModalNovaFicha(true)}
+                onClick={handleAbrirNovaFicha}
               >
                 Nova ficha
               </Botao>

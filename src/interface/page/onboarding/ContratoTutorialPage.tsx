@@ -61,7 +61,7 @@ export function ContratoTutorialPage({
             className="reveal-up"
             style={{ animationDelay: "300ms" }}
           >
-            Sei me virar — pular tutorial
+            Sei me virar, pular tutorial
           </Botao>
         </>
       }
@@ -111,8 +111,8 @@ export function ContratoTutorialPage({
           </span>
           <p className="text-[11.5px] leading-relaxed text-texto-sutil">
             O Kynori{" "}
-            <b className="text-texto-secundario">não monta treino por você</b> —
-            ele organiza e registra o treino que <i>você</i> escolhe. Se está
+            <b className="text-texto-secundario">não monta treino por você</b>.
+            Ele organiza e registra o treino que <i>você</i> escolhe. Se está
             começando agora, vale montar junto com um profissional.
           </p>
         </div>

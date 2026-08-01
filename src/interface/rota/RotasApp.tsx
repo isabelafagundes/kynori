@@ -53,6 +53,7 @@ function HomeRota() {
       fichas={fichas}
       historico={historico}
       metaSemanal={usuario?.metaSemanal}
+      nomeUsuario={usuario?.nome}
       aoNavegar={aoNavegar}
     />
   );

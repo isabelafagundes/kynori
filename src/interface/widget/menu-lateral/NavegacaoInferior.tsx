@@ -68,7 +68,7 @@ export function NavegacaoInferior({ abaAtiva, aoMudarAba }: PropriedadesNavegaca
       />
       <nav
       className="
-        fixed bottom-0 left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-[480px] -translate-x-1/2
+        fixed bottom-0 left-1/2 z-50 w-[calc(100%-2.5rem)] max-w-[480px] md:max-w-[768px] -translate-x-1/2
         bg-superficie/70 backdrop-blur-xl backdrop-saturate-150
         border border-borda-suave/60
         mb-[max(var(--safe-bottom),16px)]

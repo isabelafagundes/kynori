@@ -1,4 +1,5 @@
 import type { Ficha, RegistroTreino } from "@/domain/tipos";
+import { interpretarDataLocal } from "@/interface/util/data-local";
 import { Icone, IconeFicha } from "@/interface/widget/svg/Icone";
 
 interface PropriedadesItemHistorico {
@@ -9,7 +10,7 @@ interface PropriedadesItemHistorico {
 
 /** Formata data ISO para exibição legível */
 function formatarData(dataISO: string): string {
-  const data = new Date(dataISO);
+  const data = interpretarDataLocal(dataISO);
   return data.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",

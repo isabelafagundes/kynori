@@ -85,7 +85,7 @@ export function OverlayTrocarExercicio({
         className="absolute inset-0 h-full w-full bg-black/30 backdrop-blur-sm"
         onClick={aoFechar}
       />
-      <div className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-borda bg-superficie shadow-xl sm:max-w-[560px] sm:rounded-3xl">
+      <div className="relative flex h-[72dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-borda bg-superficie shadow-xl sm:max-w-[560px] sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4 border-b border-borda-suave px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-texto-sutil">

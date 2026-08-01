@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { formatarDataLocalISO } from "@/interface/util/data-local";
 import { Capacitor } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
 import type {
@@ -811,11 +812,12 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
   // Gera o registro pro histórico no formato existente (exercícios e cardio
   // separados) — só entra o que foi concluído/marcado.
   const finalizar = useCallback((): RegistroTreino => {
-    const finalizadoEm = new Date().toISOString();
+    const agora = new Date();
+    const finalizadoEm = agora.toISOString();
     return {
       id: "",
       fichaId: ficha.id,
-      data: finalizadoEm.slice(0, 10),
+      data: formatarDataLocalISO(agora),
       iniciadoEm,
       finalizadoEm,
       exercicios: itens

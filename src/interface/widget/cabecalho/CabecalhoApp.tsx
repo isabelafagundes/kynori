@@ -1,7 +1,14 @@
 import { useState, type ReactNode } from "react";
+import { STORAGE_KEYS } from "@/constants";
 import { snapshotService } from "@/application/snapshot/snapshot.service";
 import { temaManager } from "@/application/state/tema.state";
 import { usuarioManager } from "@/application/state/usuario.state";
+import {
+  preferenciasManager,
+  type ChavePreferenciaExecucao,
+} from "@/application/state/preferencias.state";
+import { usePreferenciasExecucao } from "@/interface/hook/usePreferenciasExecucao";
+import { Interruptor } from "@/interface/widget/formulario/Interruptor";
 import type { SnapshotPezzo } from "@/domain/snapshot";
 import type { Tema } from "@/domain/tema";
 import { AVATAR_EMOJI_PADRAO } from "@/domain/usuario";
@@ -43,6 +50,18 @@ function AmostraTema({ tema }: { tema: Tema }) {
   );
 }
 
+const TOGGLES_EXECUCAO: {
+  chave: ChavePreferenciaExecucao;
+  titulo: string;
+  descricao: string;
+}[] = [
+  { chave: "animacaoFinalizar", titulo: "Animação ao finalizar", descricao: "Tela de celebração ao concluir o treino" },
+  { chave: "vibracao", titulo: "Vibração", descricao: "Feedback tátil ao concluir séries e ações" },
+  { chave: "descansoAutomatico", titulo: "Descanso automático", descricao: "Inicia o timer ao concluir uma série" },
+  { chave: "avisoDesfazer", titulo: "Aviso de desfazer", descricao: "Mostra o atalho para desfazer a série" },
+  { chave: "avancoAutomatico", titulo: "Avanço automático", descricao: "Vai ao próximo exercício ao concluir todas as séries" },
+];
+
 export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, avatarEmoji, menuAberto, aoAbrirMenu, aoFecharMenu }: PropriedadesCabecalhoApp) {
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [menuInternoAberto, setMenuInternoAberto] = useState(false);
@@ -56,9 +75,14 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
   const [selecionandoArquivo, setSelecionandoArquivo] = useState(false);
   const [importandoDados, setImportandoDados] = useState(false);
   const [snapshotPendente, setSnapshotPendente] = useState<SnapshotPezzo | null>(null);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindoDados, setExcluindoDados] = useState(false);
   const temas = temaManager.listarTemas();
   const temaAtual = temas.find((tema) => tema.id === temaAtualId) ?? temaManager.obterTema();
   const emoji = avatarEmoji || AVATAR_EMOJI_PADRAO;
+  // Meta semanal não vem por prop; lida do singleton ao abrir a edição.
+  const metaSemanalAtual = usuarioManager.obterUsuario()?.metaSemanal;
+  const preferencias = usePreferenciasExecucao();
   const { showSuccess, showError } = useToast();
 
   function selecionarTema(tema: Tema) {
@@ -74,7 +98,11 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
     setSeletorTemaAberto(false);
   }
 
-  function salvarPerfil(dados: { nome: string; avatarEmoji: string }) {
+  function salvarPerfil(dados: {
+    nome: string;
+    avatarEmoji: string;
+    metaSemanal?: number;
+  }) {
     usuarioManager.definirUsuario(dados);
     setEditandoPerfil(false);
   }
@@ -127,6 +155,33 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
   function cancelarImportacao() {
     if (importandoDados) return;
     setSnapshotPendente(null);
+  }
+
+  async function excluirDados() {
+    setExcluindoDados(true);
+    try {
+      // Apaga todo o dado do usuário: perfil, treinos, sessão em andamento,
+      // progresso do tutorial e token. Preferências visuais (tema, fonte,
+      // barra lateral) e o id de instalação são mantidos.
+      const chaves = [
+        STORAGE_KEYS.USUARIO,
+        STORAGE_KEYS.DADOS_TREINO,
+        STORAGE_KEYS.SESSAO_ATIVA,
+        STORAGE_KEYS.TUTORIAL,
+        STORAGE_KEYS.TOKEN,
+      ];
+      await Promise.all(
+        chaves.map((chave) => appModule.armazenamento.remover(chave))
+      );
+      // Recarrega para reinicializar os singletons a partir do armazenamento
+      // vazio — o app volta ao onboarding com estado totalmente limpo.
+      window.location.assign(`${window.location.pathname}${window.location.search}#/`);
+      window.location.reload();
+    } catch {
+      setExcluindoDados(false);
+      setConfirmandoExclusao(false);
+      showError("Nao foi possivel excluir seus dados.");
+    }
   }
 
   function mensagemErroBackup(erro: unknown): string {
@@ -346,6 +401,33 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
 
             <div className="mt-7 space-y-3">
               <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-texto-sutil">
+                Execução
+              </h2>
+
+              <div className="overflow-hidden rounded-xl border border-borda-suave bg-superficie-suave">
+                {TOGGLES_EXECUCAO.map((item, indice) => (
+                  <div
+                    key={item.chave}
+                    className={`flex items-center justify-between gap-3 px-3 py-3 ${
+                      indice > 0 ? "border-t border-borda-suave" : ""
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-texto-primario">{item.titulo}</p>
+                      <p className="mt-0.5 text-xs text-texto-secundario">{item.descricao}</p>
+                    </div>
+                    <Interruptor
+                      ativo={preferencias[item.chave]}
+                      aoAlternar={() => preferenciasManager.alternar(item.chave)}
+                      rotulo={item.titulo}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-7 space-y-3">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-texto-sutil">
                 Dados
               </h2>
 
@@ -375,6 +457,21 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
                     <Icone nome="setaBaixo" tamanho={16} />
                     <span className="truncate text-sm font-medium">
                       {importandoDados ? "Importando..." : "Importar dados"}
+                    </span>
+                  </span>
+                  <Icone nome="setaDireita" tamanho={14} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoExclusao(true)}
+                  disabled={operacaoDadosEmAndamento || excluindoDados}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl border border-perigo/25 bg-perigo/5 text-left text-perigo hover:bg-perigo/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <Icone nome="lixeira" tamanho={16} />
+                    <span className="truncate text-sm font-medium">
+                      Excluir dados
                     </span>
                   </span>
                   <Icone nome="setaDireita" tamanho={14} />
@@ -414,6 +511,10 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
                     avatarInicial={emoji}
                     textoBotao="Salvar perfil"
                     aoSalvar={salvarPerfil}
+                    mostrarMetaSemanal
+                    metaSemanalInicial={metaSemanalAtual}
+                    avatarRecolhido
+                    ocultarPreviaAvatar
                   />
                 </div>
               </div>
@@ -430,6 +531,19 @@ export function CabecalhoApp({ tituloTela, acaoDireita, onBack, nomeUsuario, ava
         variant="atencao"
         aoConfirmar={confirmarImportacao}
         aoCancelar={cancelarImportacao}
+      />
+      <ModalConfirmacao
+        aberto={confirmandoExclusao}
+        titulo="Excluir dados"
+        descricao="Isto vai apagar permanentemente seu perfil, treinos e histórico deste aparelho. Esta ação não pode ser desfeita. Tem certeza?"
+        textoConfirmar={excluindoDados ? "Excluindo..." : "Excluir tudo"}
+        textoCancelar="Cancelar"
+        variant="perigo"
+        aoConfirmar={excluirDados}
+        aoCancelar={() => {
+          if (excluindoDados) return;
+          setConfirmandoExclusao(false);
+        }}
       />
       {importandoDados && (
         <div

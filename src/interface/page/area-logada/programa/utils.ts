@@ -5,6 +5,27 @@ import type {
   Programa,
   RegistroTreino,
 } from "@/domain/tipos";
+import { cardioDaFicha, exerciciosDaFicha } from "@/domain/ficha";
+
+/**
+ * Estimativa de duração da ficha em minutos, arredondada para múltiplos de 5:
+ * cada série ocupa ~45s de execução mais o descanso configurado; cardio entra
+ * com a duração declarada. Retorna 0 para ficha vazia (o card omite o tempo).
+ */
+export function estimarDuracaoMinutos(ficha: Ficha): number {
+  const segundosMusculacao = exerciciosDaFicha(ficha).reduce(
+    (total, exercicio) =>
+      total + exercicio.series * (45 + (exercicio.descansoSegundos || 60)),
+    0,
+  );
+  const segundosCardio = cardioDaFicha(ficha).reduce(
+    (total, cardio) => total + (cardio.duracaoMinutos || 0) * 60,
+    0,
+  );
+  const totalSegundos = segundosMusculacao + segundosCardio;
+  if (totalSegundos <= 0) return 0;
+  return Math.max(5, Math.round(totalSegundos / 60 / 5) * 5);
+}
 
 export function obterUltimoTreinoDaFicha(
   fichaId: string,
@@ -25,7 +46,7 @@ export function formatarDataRelativa(dataISO: string): string {
 
   if (diffDias === 0) return "Hoje";
   if (diffDias === 1) return "Ontem";
-  if (diffDias < 7) return `${diffDias}d atras`;
+  if (diffDias < 7) return `há ${diffDias} ${diffDias === 1 ? "dia" : "dias"}`;
   return data.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 

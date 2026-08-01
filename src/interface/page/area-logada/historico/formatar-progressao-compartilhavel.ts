@@ -44,5 +44,7 @@ export function formatarPeriodoProgressao(progressao: ProgressaoCompartilhavel) 
     month: "short",
     year: "numeric",
   });
-  return `${formatador.format(new Date(primeiro.data))} — ${formatador.format(new Date(ultimo.data))}`;
+  const inicio = formatador.format(new Date(primeiro.data));
+  const fim = formatador.format(new Date(ultimo.data));
+  return inicio === fim ? inicio : `${inicio} a ${fim}`;
 }

@@ -58,8 +58,9 @@ export class UsuarioManager {
       nome: dados.nome.trim(),
       avatarEmoji: dados.avatarEmoji,
       criadoEm: this.usuario?.criadoEm ?? new Date().toISOString(),
-      // Edição de perfil não mexe na meta: sem o campo, preserva o que havia.
-      metaSemanal: dados.metaSemanal ?? this.usuario?.metaSemanal,
+      // Onboarding e edição de perfil passam a meta explicitamente (inclusive
+      // undefined para "sem meta"), então persiste exatamente o que veio.
+      metaSemanal: dados.metaSemanal,
     };
     this.usuario = usuario;
     void this.salvar(usuario);

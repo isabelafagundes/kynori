@@ -581,4 +581,26 @@ describe("pezzoState", () => {
       expect(pezzoState.gerarNomeFicha()).toBe("Treino C");
     });
   });
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     gerarNomePrograma — nomeação automática sequencial
+     ═══════════════════════════════════════════════════════════════════════════ */
+  describe("gerarNomePrograma", () => {
+    it("retorna 'Programa 1' quando nao ha programas", () => {
+      expect(pezzoState.gerarNomePrograma()).toBe("Programa 1");
+    });
+
+    it("usa o primeiro numero disponivel", () => {
+      pezzoState.adicionarPrograma(dadosPrograma({ nome: "Programa 1" }));
+      pezzoState.adicionarPrograma(dadosPrograma({ nome: "Programa 3" }));
+
+      expect(pezzoState.gerarNomePrograma()).toBe("Programa 2");
+    });
+
+    it("compara nomes sem diferenciar maiusculas e espacos externos", () => {
+      pezzoState.adicionarPrograma(dadosPrograma({ nome: "  PROGRAMA 1  " }));
+
+      expect(pezzoState.gerarNomePrograma()).toBe("Programa 2");
+    });
+  });
 });

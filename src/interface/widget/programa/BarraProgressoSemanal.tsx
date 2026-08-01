@@ -11,7 +11,7 @@ interface PropriedadesBarraProgressoSemanal {
 
 /**
  * Barra de progresso semanal do programa, com animação de preenchimento
- * a partir do zero ao montar. Reutilizada pelo BannerPrograma (Home) e
+ * a partir do zero ao montar. Reutilizada pelo card do programa (Home) e
  * pela tela de resumo do programa.
  */
 export function BarraProgressoSemanal({
@@ -44,22 +44,18 @@ export function BarraProgressoSemanal({
         </div>
       )}
 
-      <div className="flex items-center gap-3 group">
-        <div className="flex-1 h-2 rounded-full bg-borda-suave overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-700 ease-out relative ${completo ? "bg-acento animate-pulse-subtle" : "bg-texto-secundario/50 group-hover:bg-texto-secundario/60"}`}
-            style={{ width: `${larguraBarra}%` }}
-          >
-            {completo && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-            )}
-          </div>
-        </div>
-        <span
-          className={`text-xs font-bold tabular-nums leading-none transition-colors duration-300 ${completo ? "text-acento" : "text-texto-secundario"}`}
-        >
-          {porcentagem}%
-        </span>
+      {/* Sem rótulo de porcentagem: a fração "X de Y fichas" já vive no
+          cabeçalho do banner, e a barra cheia comunica o 100%. Eram três
+          codificações do mesmo fato lado a lado. */}
+      <div className="group h-2 overflow-hidden rounded-full bg-borda-suave">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ease-out ${
+            completo
+              ? "bg-acento"
+              : "bg-texto-secundario/50 group-hover:bg-texto-secundario/60"
+          }`}
+          style={{ width: `${larguraBarra}%` }}
+        />
       </div>
     </div>
   );

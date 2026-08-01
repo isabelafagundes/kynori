@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Exercicio, Ficha, RegistroTreino } from "@/domain/tipos";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Exercicio, Ficha, RegistroTreino, TipoCardioDef } from "@/domain/tipos";
 import { calcularResumoTreino, type ResumoCompartilhamento } from "@/application/compartilhamento/calcular-resumo-treino";
 import { resumirExerciciosTreino, gruposMuscularesTreino, type ResumoExercicioTreino } from "@/application/compartilhamento/resumir-exercicios-treino";
 import { Botao } from "@/interface/widget/botao/Botao";
 import { Icone, IconeFicha } from "@/interface/widget/svg/Icone";
 import { formatarNumeroBR } from "@/interface/util/numero";
 import { useControleFundoResultado } from "@/interface/widget/fundo-resultado/useControleFundoResultado";
+import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
 import { CardResultadoTreino } from "./CardResultadoTreino";
 import { formatarDuracaoTreino } from "./formatar-resultado";
 import { SeletorFundoResultado, type ControleFundo } from "./SeletorFundoResultado";
@@ -68,7 +69,11 @@ export function OverlayCompartilharTreino({ aberto, registro, ficha, catalogo, a
 }
 
 function Celebracao({ aoConcluir }: { aoConcluir: () => void }) {
-  useEffect(() => { if (typeof navigator.vibrate === "function") navigator.vibrate([40, 60, 40]); const id = window.setTimeout(aoConcluir, 2600); return () => window.clearTimeout(id); }, [aoConcluir]);
+  // Ref para não reiniciar o timeout de 2,6s a cada re-render do pai (o timer
+  // de descanso, se estiver rodando, re-renderiza a cada segundo).
+  const aoConcluirRef = useRef(aoConcluir);
+  useEffect(() => { aoConcluirRef.current = aoConcluir; }, [aoConcluir]);
+  useEffect(() => { if (typeof navigator.vibrate === "function") navigator.vibrate([40, 60, 40]); const id = window.setTimeout(() => aoConcluirRef.current(), 2600); return () => window.clearTimeout(id); }, []);
   const confetes = useMemo(() => Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: ((i * 17) % 12) / 10, drift: ((i * 41) % 120) - 60, spin: 180 + ((i * 53) % 240), color: CORES_CONFETE[i % CORES_CONFETE.length] })), []);
   return <div className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-fundo animate-fade-in" role="status" aria-live="polite">
     <div className="pointer-events-none absolute inset-0" aria-hidden="true">{confetes.map((p, i) => <span key={i} className="animate-confetti absolute top-0 h-3 w-2 rounded-sm" style={{ left: `${p.left}%`, backgroundColor: p.color, animationDelay: `${p.delay}s`, ["--confetti-drift" as string]: `${p.drift}px`, ["--confetti-spin" as string]: `${p.spin}deg` }} />)}</div>
@@ -80,16 +85,17 @@ function Conteudo({ registro, ficha, catalogo, fundo, etapa, aoMudarEtapa, aoCon
   const resumo = useMemo(() => calcularResumoTreino(registro), [registro]);
   const exercicios = useMemo(() => resumirExerciciosTreino(registro, catalogo), [registro, catalogo]);
   const grupos = useMemo(() => gruposMuscularesTreino(exercicios), [exercicios]);
-  const share = useCompartilhamentoTreino(registro, ficha, resumo, fundo.selecao, grupos);
+  const tiposCardio = stateManagerRepository.listarTiposCardio();
+  const share = useCompartilhamentoTreino(registro, ficha, resumo, fundo.selecao, grupos, tiposCardio);
   const telaLarga = useEhTelaLarga();
 
   // Tablet/desktop: um único pop-up que alterna entre resumo e compartilhar.
   if (telaLarga) {
-    return <ModalResultado etapa={etapa} ficha={ficha} registro={registro} resumo={resumo} exercicios={exercicios} grupos={grupos} fundo={fundo} share={share} aoCompartilhar={() => aoMudarEtapa("editor")} aoVoltar={() => aoMudarEtapa("resumo")} aoConcluir={aoConcluir} />;
+    return <ModalResultado etapa={etapa} ficha={ficha} registro={registro} resumo={resumo} exercicios={exercicios} grupos={grupos} tiposCardio={tiposCardio} fundo={fundo} share={share} aoCompartilhar={() => aoMudarEtapa("editor")} aoVoltar={() => aoMudarEtapa("resumo")} aoConcluir={aoConcluir} />;
   }
   // Mobile: takeover em tela cheia (resumo) + tela cheia (compartilhar).
   if (etapa === "resumo") return <ResumoMobile ficha={ficha} registro={registro} resumo={resumo} exercicios={exercicios} aoCompartilhar={() => aoMudarEtapa("editor")} aoConcluir={aoConcluir} />;
-  return <EditorMobile registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} aoVoltar={() => aoMudarEtapa("resumo")} />;
+  return <EditorMobile registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} tiposCardio={tiposCardio} aoVoltar={() => aoMudarEtapa("resumo")} />;
 }
 
 /* ─────────────────────────── Conteúdos compartilhados ─────────────────────────── */
@@ -170,9 +176,9 @@ function ResumoCorpo({ ficha, registro, resumo, exercicios }: { ficha: Ficha; re
   </div>;
 }
 
-function EditorCorpo({ registro, ficha, resumo, fundo, share, grupos }: { registro: RegistroTreino; ficha: Ficha; resumo: ResumoCompartilhamento; fundo: ControleFundo; share: Share; grupos: string[] }) {
+function EditorCorpo({ registro, ficha, resumo, fundo, share, grupos, tiposCardio }: { registro: RegistroTreino; ficha: Ficha; resumo: ResumoCompartilhamento; fundo: ControleFundo; share: Share; grupos: string[]; tiposCardio: TipoCardioDef[] }) {
   return <div className="md:grid md:grid-cols-[minmax(0,380px)_1fr] md:items-start md:gap-8">
-    <div className="mx-auto w-full max-w-[320px] md:max-w-[380px]"><CardResultadoTreino registro={registro} ficha={ficha} resumo={resumo} fundo={fundo.selecao} grupos={grupos} /></div>
+    <div className="mx-auto w-full max-w-[320px] md:max-w-[380px]"><CardResultadoTreino registro={registro} ficha={ficha} resumo={resumo} fundo={fundo.selecao} grupos={grupos} tiposCardio={tiposCardio} /></div>
     <div className="mt-6 md:mt-0">
       <h3 className="mb-2 hidden font-display text-base font-semibold text-texto-primario md:block">Fundo</h3>
       <SeletorFundoResultado ctrl={fundo} />
@@ -183,33 +189,40 @@ function EditorCorpo({ registro, ficha, resumo, fundo, share, grupos }: { regist
 
 /* ─────────────────────────── Tablet / desktop: pop-up único ─────────────────────────── */
 
-function ModalResultado({ etapa, ficha, registro, resumo, exercicios, grupos, fundo, share, aoCompartilhar, aoVoltar, aoConcluir }: { etapa: Exclude<EtapaResultado, "celebracao">; ficha: Ficha; registro: RegistroTreino; resumo: ResumoCompartilhamento; exercicios: ResumoExercicioTreino[]; grupos: string[]; fundo: ControleFundo; share: Share; aoCompartilhar: () => void; aoVoltar: () => void; aoConcluir: () => void }) {
+function ModalResultado({ etapa, ficha, registro, resumo, exercicios, grupos, tiposCardio, fundo, share, aoCompartilhar, aoVoltar, aoConcluir }: { etapa: Exclude<EtapaResultado, "celebracao">; ficha: Ficha; registro: RegistroTreino; resumo: ResumoCompartilhamento; exercicios: ResumoExercicioTreino[]; grupos: string[]; tiposCardio: TipoCardioDef[]; fundo: ControleFundo; share: Share; aoCompartilhar: () => void; aoVoltar: () => void; aoConcluir: () => void }) {
   const editando = etapa === "editor";
   return <div className="fixed inset-0 z-[80] flex items-center justify-center animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="resultado-title">
     {editando
       ? <button type="button" aria-label="Voltar ao resumo" onClick={aoVoltar} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       : <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />}
-    <div className="relative mx-4 flex h-[82dvh] max-h-[840px] w-full max-w-[820px] flex-col overflow-hidden rounded-[20px] border border-borda-suave bg-fundo shadow-xl">
-      <div className="min-h-0 flex-1 overflow-y-auto px-7 py-8">
+    <div className="relative mx-4 flex h-[86dvh] max-h-[860px] w-full max-w-[840px] flex-col overflow-hidden rounded-[20px] border border-borda-suave bg-fundo shadow-xl">
+      {editando && (
+        <header className="flex shrink-0 items-center gap-3 border-b border-borda-suave px-7 pb-3 pt-5">
+          <button
+            type="button"
+            onClick={aoVoltar}
+            aria-label="Voltar ao resumo"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] text-texto-secundario transition-colors hover:bg-superficie-hover hover:text-texto-primario focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+          >
+            <Icone nome="setaEsquerda" tamanho={18} />
+          </button>
+          <div className="min-w-0">
+            <h2 id="resultado-title" className="truncate font-display text-lg font-semibold leading-tight text-texto-primario">Personalizar resultado</h2>
+            <p className="text-xs text-texto-secundario">Escolha um fundo · exportado em 4:5</p>
+          </div>
+        </header>
+      )}
+      <div className="min-h-0 flex-1 overflow-y-auto px-7 py-7">
         {editando
-          ? <div>
-              <div className="mb-5">
-                <h2 id="resultado-title" className="font-display text-[22px] font-semibold text-texto-primario">Personalizar resultado</h2>
-                <p className="mt-0.5 text-sm text-texto-secundario">Escolha um fundo · exportado em 4:5</p>
-              </div>
-              <EditorCorpo registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} />
-            </div>
+          ? <EditorCorpo registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} tiposCardio={tiposCardio} />
           : <ResumoCorpo ficha={ficha} registro={registro} resumo={resumo} exercicios={exercicios} />}
       </div>
-      <div className="flex shrink-0 items-center justify-end gap-3 border-t border-borda-suave bg-superficie/60 px-7 py-4">
+      <div className="flex shrink-0 items-center justify-end gap-3 border-t border-borda bg-superficie/95 px-7 py-4 backdrop-blur-sm">
         {editando
-          ? <>
-              <Botao variante="secundario" onClick={aoVoltar}>Voltar</Botao>
-              <Botao disabled={share.compartilhando} onClick={() => void share.compartilhar()}>{share.compartilhando ? "Criando imagem…" : "Compartilhar imagem"}</Botao>
-            </>
+          ? <Botao icone={<Icone nome="compartilhar" tamanho={17} />} disabled={share.compartilhando} onClick={() => void share.compartilhar()}>{share.compartilhando ? "Criando imagem…" : "Compartilhar imagem"}</Botao>
           : <>
-              <Botao variante="secundario" onClick={aoConcluir}>Concluir</Botao>
-              <Botao onClick={aoCompartilhar}>Compartilhar resultado</Botao>
+              <Botao variante="secundario" icone={<Icone nome="compartilhar" tamanho={16} />} onClick={aoCompartilhar}>Compartilhar resultado</Botao>
+              <Botao icone={<Icone nome="check" tamanho={16} />} onClick={aoConcluir}>Concluir</Botao>
             </>}
       </div>
     </div>
@@ -221,11 +234,16 @@ function ModalResultado({ etapa, ficha, registro, resumo, exercicios, grupos, fu
 function ResumoMobile({ ficha, registro, resumo, exercicios, aoCompartilhar, aoConcluir }: { ficha: Ficha; registro: RegistroTreino; resumo: ResumoCompartilhamento; exercicios: ResumoExercicioTreino[]; aoCompartilhar: () => void; aoConcluir: () => void }) {
   return <div className="fixed inset-0 z-[80] flex flex-col bg-fundo animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="resultado-title">
     <main className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-[max(var(--safe-top),24px)]"><ResumoCorpo ficha={ficha} registro={registro} resumo={resumo} exercicios={exercicios} /></main>
-    <footer className="shrink-0 border-t border-borda bg-superficie/95 px-5 pb-[max(var(--safe-bottom),16px)] pt-4 backdrop-blur-sm"><div className="mx-auto flex max-w-[480px] gap-3"><Botao variante="secundario" className="flex-1" onClick={aoConcluir}>Concluir</Botao><Botao className="flex-1" onClick={aoCompartilhar}>Compartilhar</Botao></div></footer>
+    <footer className="shrink-0 border-t border-borda bg-superficie/95 px-5 pb-[max(var(--safe-bottom),16px)] pt-4 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-[480px] gap-3">
+        <Botao variante="secundario" className="flex-1" icone={<Icone nome="compartilhar" tamanho={16} />} onClick={aoCompartilhar}>Compartilhar</Botao>
+        <Botao className="flex-1" icone={<Icone nome="check" tamanho={16} />} onClick={aoConcluir}>Concluir</Botao>
+      </div>
+    </footer>
   </div>;
 }
 
-function EditorMobile({ registro, ficha, resumo, fundo, share, grupos, aoVoltar }: { registro: RegistroTreino; ficha: Ficha; resumo: ResumoCompartilhamento; fundo: ControleFundo; share: Share; grupos: string[]; aoVoltar: () => void }) {
+function EditorMobile({ registro, ficha, resumo, fundo, share, grupos, tiposCardio, aoVoltar }: { registro: RegistroTreino; ficha: Ficha; resumo: ResumoCompartilhamento; fundo: ControleFundo; share: Share; grupos: string[]; tiposCardio: TipoCardioDef[]; aoVoltar: () => void }) {
   return <div className="fixed inset-0 z-[80] flex flex-col bg-fundo animate-fade-in" role="dialog" aria-modal="true" aria-labelledby="resultado-title">
     <header className="flex shrink-0 items-center gap-3 border-b border-borda-suave px-5 pb-3 pt-[max(var(--safe-top),16px)]">
       <button type="button" onClick={aoVoltar} aria-label="Voltar ao resumo" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-borda bg-superficie-suave text-texto-secundario shadow-sm shadow-black/[0.04] transition-all duration-150 hover:border-acento hover:bg-superficie-hover hover:text-texto-primario active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"><Icone nome="setaEsquerda" tamanho={16} /></button>
@@ -234,7 +252,7 @@ function EditorMobile({ registro, ficha, resumo, fundo, share, grupos, aoVoltar 
         <p className="text-xs text-texto-secundario">Escolha um fundo · exportado em 4:5</p>
       </div>
     </header>
-    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-5"><EditorCorpo registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} /></main>
+    <main className="min-h-0 flex-1 overflow-y-auto px-5 py-5"><EditorCorpo registro={registro} ficha={ficha} resumo={resumo} fundo={fundo} share={share} grupos={grupos} tiposCardio={tiposCardio} /></main>
     <footer className="shrink-0 border-t border-borda bg-superficie/95 px-5 pb-[max(var(--safe-bottom),16px)] pt-4 backdrop-blur-sm"><Botao ocuparLarguraTotal icone={<Icone nome="compartilhar" tamanho={16} />} disabled={share.compartilhando} onClick={() => void share.compartilhar()}>{share.compartilhando ? "Criando imagem…" : "Compartilhar imagem"}</Botao></footer>
   </div>;
 }

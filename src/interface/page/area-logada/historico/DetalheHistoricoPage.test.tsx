@@ -33,6 +33,26 @@ const exercicios: Exercicio[] = [
 ];
 
 describe("DetalheHistoricoPage", () => {
+  it("exibe uma data sem horário no mesmo dia do calendário", () => {
+    const registroDataLocal = {
+      ...registro,
+      data: "2026-07-27",
+    };
+
+    render(
+      <DetalheHistoricoPage
+        registroId={registroDataLocal.id}
+        fichas={[ficha]}
+        historico={[registroDataLocal]}
+        exercicios={[]}
+        aoNavegar={vi.fn()}
+        aoVoltar={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/27 de julho de 2026/i)).toBeInTheDocument();
+  });
+
   it("abre o compartilhamento para o registro exibido", async () => {
     const user = userEvent.setup();
     render(

@@ -37,6 +37,11 @@ export const TEMA_CLARO: Tema = {
     "--background-app-d": "oklch(0.90 0.03 35 / 0.4)",
     "--background-app-start": "oklch(0.95 0.015 55)",
     "--background-app-end": "oklch(0.95 0.015 50)",
+    "--sombra-recesso":
+      "inset 0 2px 4px oklch(0.25 0.02 55 / 0.16), inset 0 -1px 0 oklch(1 0 0 / 0.55)",
+    "--sombra-elevacao": "0 4px 8px oklch(0.25 0.02 55 / 0.18)",
+    "--realce-topo": "oklch(1 0 0 / 0.32)",
+    "--dia-vazio-fundo": "oklch(0.918 0.012 65)",
   },
 };
 
@@ -70,6 +75,11 @@ export const TEMA_ESCURO: Tema = {
     "--background-app-d": "oklch(0.27 0.030 35 / 0.35)",
     "--background-app-start": "oklch(0.205 0.014 55)",
     "--background-app-end": "oklch(0.175 0.012 50)",
+    "--sombra-recesso":
+      "inset 0 2px 5px oklch(0 0 0 / 0.60), inset 0 -1px 0 oklch(1 0 0 / 0.05)",
+    "--sombra-elevacao": "0 5px 10px oklch(0 0 0 / 0.45)",
+    "--realce-topo": "oklch(1 0 0 / 0.70)",
+    "--dia-vazio-fundo": "oklch(0.190 0.010 55)",
   },
 };
 
@@ -102,6 +112,11 @@ export const TEMA_SEPIA: Tema = {
     "--background-app-d": "oklch(0.89 0.045 58 / 0.4)",
     "--background-app-start": "oklch(0.95 0.028 80)",
     "--background-app-end": "oklch(0.95 0.024 66)",
+    "--sombra-recesso":
+      "inset 0 2px 4px oklch(0.28 0.04 60 / 0.17), inset 0 -1px 0 oklch(1 0 0 / 0.55)",
+    "--sombra-elevacao": "0 4px 8px oklch(0.28 0.04 60 / 0.19)",
+    "--realce-topo": "oklch(1 0 0 / 0.32)",
+    "--dia-vazio-fundo": "oklch(0.916 0.028 80)",
   },
 };
 
@@ -134,6 +149,11 @@ export const TEMA_SALVIA: Tema = {
     "--background-app-d": "oklch(0.89 0.036 170 / 0.4)",
     "--background-app-start": "oklch(0.95 0.020 150)",
     "--background-app-end": "oklch(0.95 0.018 160)",
+    "--sombra-recesso":
+      "inset 0 2px 4px oklch(0.26 0.03 156 / 0.16), inset 0 -1px 0 oklch(1 0 0 / 0.55)",
+    "--sombra-elevacao": "0 4px 8px oklch(0.26 0.03 156 / 0.18)",
+    "--realce-topo": "oklch(1 0 0 / 0.32)",
+    "--dia-vazio-fundo": "oklch(0.916 0.022 150)",
   },
 };
 
@@ -166,6 +186,11 @@ export const TEMA_ARGILA: Tema = {
     "--background-app-d": "oklch(0.89 0.044 12 / 0.4)",
     "--background-app-start": "oklch(0.95 0.026 30)",
     "--background-app-end": "oklch(0.95 0.024 20)",
+    "--sombra-recesso":
+      "inset 0 2px 4px oklch(0.30 0.05 28 / 0.17), inset 0 -1px 0 oklch(1 0 0 / 0.55)",
+    "--sombra-elevacao": "0 4px 8px oklch(0.30 0.05 28 / 0.19)",
+    "--realce-topo": "oklch(1 0 0 / 0.32)",
+    "--dia-vazio-fundo": "oklch(0.916 0.026 30)",
   },
 };
 
@@ -199,6 +224,11 @@ export const TEMA_GRAFITE: Tema = {
     "--background-app-d": "oklch(0.27 0.009 258 / 0.35)",
     "--background-app-start": "oklch(0.205 0.008 250)",
     "--background-app-end": "oklch(0.175 0.006 250)",
+    "--sombra-recesso":
+      "inset 0 2px 5px oklch(0 0 0 / 0.60), inset 0 -1px 0 oklch(1 0 0 / 0.05)",
+    "--sombra-elevacao": "0 5px 10px oklch(0 0 0 / 0.45)",
+    "--realce-topo": "oklch(1 0 0 / 0.70)",
+    "--dia-vazio-fundo": "oklch(0.198 0.007 250)",
   },
 };
 

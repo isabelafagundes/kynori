@@ -159,9 +159,10 @@ export function HomePage({
         {cabecalhoSaudacao}
         <section className="reveal-up" style={{ animationDelay: "90ms" }}>
           <EstadoVazio
-            icone="halter"
-            titulo="Comece sua jornada 💪"
+            emoji="🌱"
+            titulo="Comece sua jornada"
             descricao="Organize seus treinos, acompanhe seu progresso e mantenha a constância."
+            dica="⏱️ Leva menos de um minuto"
             acao={
               <Botao
                 ref={alvoCriarPrograma}
@@ -203,6 +204,7 @@ export function HomePage({
                 ficha={proximaFicha}
                 exerciciosCatalogo={exerciciosPadrao}
                 aoIniciarTreino={(fichaId) => aoNavegar("execucao", { fichaId })}
+                aoIniciarLivre={() => aoNavegar("execucaoLivre")}
               />
             </section>
           )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Ficha, RegistroTreino } from "@/domain/tipos";
+import { ehTreinoLivre } from "@/domain/treino-livre";
 import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { Botao } from "@/interface/widget/botao/Botao";
@@ -44,6 +45,7 @@ const MS_AVANCO_AUTOMATICO = 450;
     chips viram rail lateral; no lg+ entra o painel de contexto à direita. */
 export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTreinoPageProps) {
   const sessao = useSessaoTreino(ficha, historico);
+  const treinoLivre = ehTreinoLivre(ficha.id);
   const segundosDescanso = sessao.configuracaoAtual?.descansoSegundos ?? 0;
   const timer = useTimerDescanso(segundosDescanso);
   const { resetar: resetarTimer, rodando: timerRodando, segundosRestantes: timerSegundosRestantes } = timer;
@@ -329,19 +331,29 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
         <main className="grid flex-1 place-items-center px-5 py-10">
           <div className="w-full max-w-[420px] text-center">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-acento-suave">
-              <Icone nome="check" tamanho={24} />
+              <Icone nome={treinoLivre ? "raio" : "check"} tamanho={24} />
             </div>
-            <h1 className="mt-4 font-display text-2xl font-semibold">Nenhum item restante hoje</h1>
+            <h1 className="mt-4 font-display text-2xl font-semibold">
+              {treinoLivre ? "Monte seu treino livre" : "Nenhum item restante hoje"}
+            </h1>
             <p className="mt-2 text-sm leading-relaxed text-texto-secundario">
-              Você pode adicionar outro exercício ou finalizar o treino. A ficha original permanece intacta.
+              {treinoLivre
+                ? "Adicione os exercícios que quiser, na ordem que quiser. Isso não altera seus programas."
+                : "Você pode adicionar outro exercício ou finalizar o treino. A ficha original permanece intacta."}
             </p>
             <div className="mt-6 grid gap-2">
               <Botao ocuparLarguraTotal onClick={() => setAdicionarExercicioAberto(true)}>
                 Adicionar exercício
               </Botao>
-              <Botao variante="secundario" ocuparLarguraTotal onClick={solicitarFinalizacao}>
-                Finalizar treino
-              </Botao>
+              {treinoLivre ? (
+                <Botao variante="secundario" ocuparLarguraTotal onClick={descartarTreino}>
+                  Sair
+                </Botao>
+              ) : (
+                <Botao variante="secundario" ocuparLarguraTotal onClick={solicitarFinalizacao}>
+                  Finalizar treino
+                </Botao>
+              )}
             </div>
           </div>
         </main>

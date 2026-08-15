@@ -24,6 +24,7 @@ export const ROTAS = {
   gerenciarFichas: "/gerenciar/fichas",
   gerenciarExercicios: "/gerenciar/exercicios",
   execucao: "/execucao/:fichaId",
+  execucaoLivre: "/execucao-livre",
   sequencia: "/sequencia",
   resumoPrograma: "/programa/:programaId",
   detalheHistorico: "/historico/:registroId",
@@ -55,6 +56,8 @@ export function construirCaminho(destino: string, params: ParamsRota = {}): stri
       return "/gerenciar/exercicios";
     case "execucao":
       return `/execucao/${params.fichaId}`;
+    case "execucaoLivre":
+      return "/execucao-livre";
     case "detalheSequencia":
       return "/sequencia";
     case "resumoPrograma":

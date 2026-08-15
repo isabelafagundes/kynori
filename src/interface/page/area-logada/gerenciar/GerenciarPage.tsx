@@ -358,9 +358,10 @@ export function GerenciarPage({ aoNavegar, visualizacao = "programas" }: Proprie
             <SkeletonProgramas />
           ) : programas.length === 0 ? (
             <EstadoVazio
-              icone="clipboard"
+              emoji="📋"
               titulo="Nenhum programa criado"
               descricao="Crie seu primeiro programa para organizar suas fichas de treino."
+              dica="🗂️ Um programa agrupa as fichas de um ciclo"
               acao={
                 <Botao
                   variante="secundario"
@@ -486,9 +487,10 @@ export function GerenciarPage({ aoNavegar, visualizacao = "programas" }: Proprie
 
               {fichas.length === 0 ? (
                 <EstadoVazio
-                  icone="halter"
+                  emoji="🏋️"
                   titulo="Nenhuma ficha criada"
                   descricao="Crie sua primeira ficha de treino para começar."
+                  dica="💡 Uma ficha por dia de treino — A, B, C…"
                   acao={
                     <Botao
                       variante="secundario"

@@ -7,7 +7,7 @@
    inalteradas.
    ═══════════════════════════════════════════ */
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Navigate,
   Route,
@@ -30,6 +30,7 @@ import { ResumoProgramaPage } from "@/interface/page/area-logada/programa/Resumo
 import { EditorProgramaPage } from "@/interface/page/area-logada/gerenciar/EditorProgramaPage";
 import { EditorFichaPage } from "@/interface/page/area-logada/gerenciar/EditorFichaPage";
 import { ExecucaoTreinoPage } from "@/interface/page/area-logada/execucao/ExecucaoTreinoPage";
+import { criarFichaLivre } from "@/domain/treino-livre";
 import { EstatisticasPage } from "@/interface/page/area-logada/estatisticas/EstatisticasPage";
 import { DetalheSequenciaPage } from "@/interface/page/area-logada/sequencia/DetalheSequenciaPage";
 import { OnboardingUsuarioPage } from "@/interface/page/onboarding/OnboardingUsuarioPage";
@@ -180,6 +181,23 @@ function ExecucaoRota() {
   );
 }
 
+// Treino livre: sessão sem ficha de origem. Monta uma ficha sintética vazia
+// (referência estável via useMemo — o motor da sessão depende da identidade da
+// ficha para restaurar/persistir) e reusa a mesma página de execução.
+function ExecucaoLivreRota() {
+  const { historico } = useDados();
+  const navigate = useNavigate();
+  const fichaLivre = useMemo(() => criarFichaLivre(), []);
+
+  return (
+    <ExecucaoTreinoPage
+      ficha={fichaLivre}
+      historico={historico}
+      aoVoltar={() => navigate(ROTAS.treinos, { replace: true })}
+    />
+  );
+}
+
 /* ─── Botão voltar nativo (Android/Capacitor) ─── */
 
 function useBackButtonNativo() {
@@ -240,6 +258,7 @@ export function RotasApp() {
       <Routes location={background ?? location}>
         {/* Tela cheia, fora do shell */}
         <Route path={ROTAS.execucao} element={<ExecucaoRota />} />
+        <Route path={ROTAS.execucaoLivre} element={<ExecucaoLivreRota />} />
 
         {/* Shell com cabeçalho + navegação inferior */}
         <Route element={<AppLayout />}>

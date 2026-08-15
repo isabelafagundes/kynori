@@ -121,9 +121,10 @@ export function EstatisticasPage({
     return (
       <div className="px-5 py-4 reveal-up">
         <EstadoVazio
-          icone="grafico"
+          emoji="📈"
           titulo="Sem dados ainda"
           descricao="Conclua seu primeiro treino para começar a acompanhar sua progressão."
+          dica="📊 Volume, frequência e recordes por exercício"
           acao={
             <button
               onClick={() => aoNavegar("treinos")}

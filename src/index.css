@@ -455,6 +455,74 @@ html {
     );
 }
 
+/* ── Emblema do estado vazio ──
+   O vazio é um estado estável, não um carregamento: o movimento precisa
+   dizer "vivo", não "aguarde". Daí a onda lenta (4,8s, eco a cada 1,6s)
+   em vez de giro contínuo. Só transform/opacity, para o ciclo ficar no
+   compositor e não repintar a tela toda enquanto ela está parada.
+
+   O véu radial e os anéis derivam de `acento-suave`/`borda`, então
+   acompanham a calibragem de cada tema sem token novo. */
+.emblema-vazio {
+  background: radial-gradient(
+    circle at 50% 35%,
+    color-mix(in oklch, var(--color-acento-suave) 90%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+@keyframes emblema-onda {
+  0% {
+    transform: scale(0.58);
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.14);
+    opacity: 0;
+  }
+}
+
+.emblema-onda {
+  opacity: 0;
+  animation: emblema-onda 4.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+@keyframes emblema-flutua {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.emblema-nucleo {
+  animation: emblema-flutua 5s ease-in-out infinite;
+}
+
+/* O reset global de reduced-motion zera a duração, mas os anéis param
+   no keyframe final (invisíveis) e sobra um emblema sem contorno. Aqui
+   o estado de repouso é explícito: um anel parado, núcleo firme. */
+@media (prefers-reduced-motion: reduce) {
+  .emblema-onda {
+    animation: none;
+    opacity: 0.45;
+    transform: scale(1);
+  }
+
+  .emblema-onda ~ .emblema-onda {
+    display: none;
+  }
+
+  .emblema-nucleo {
+    animation: none;
+  }
+}
+
 /* ── Entrada orquestrada da home (fade + subida) ── */
 @keyframes reveal-up {
   from {

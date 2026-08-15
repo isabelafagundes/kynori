@@ -16,6 +16,7 @@ import { MenuAcoes } from "@/interface/widget/menu/MenuAcoes";
 import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 import type { OpcoesNavegacao } from "@/interface/rota/useNavegar";
 import { useGuardaSaida } from "./useGuardaSaida";
+import { RodapeEditor } from "./RodapeEditor";
 
 /** Assinatura dos campos que só são persistidos ao salvar. */
 function assinaturaPrograma(nome: string, descricao: string, ativo: boolean): string {
@@ -356,17 +357,11 @@ export function EditorProgramaPage({
       </div>
 
       {/* Footer fixo com botões */}
-      <div className="shrink-0 px-5 pt-4 pb-[max(var(--safe-bottom),16px)] border-t border-borda bg-superficie/95 backdrop-blur-sm">
-        <div className="max-w-[480px] mx-auto">
-          <Botao
-            variante="primario"
-            onClick={handleSalvar}
-            className="w-full"
-          >
-            {programaPersistido ? "Salvar" : "Criar Programa"}
-          </Botao>
-        </div>
-      </div>
+      <RodapeEditor
+        rotuloSalvar={programaPersistido ? "Salvar" : "Criar Programa"}
+        aoSalvar={handleSalvar}
+        aoFechar={() => guarda.solicitarSaida(aoVoltar)}
+      />
 
       {/* Confirmação de saída com alterações não salvas */}
       <ModalConfirmacao

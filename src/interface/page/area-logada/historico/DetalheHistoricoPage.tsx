@@ -10,6 +10,7 @@ import {
   type RegistroSerie,
   type RegistroTreino,
 } from "@/domain/tipos";
+import { criarFichaLivre, ehTreinoLivre } from "@/domain/treino-livre";
 import { OverlayCompartilharTreino } from "@/interface/page/area-logada/execucao/OverlayFinalizado";
 import { EstadoVazio } from "@/interface/widget/EstadoVazio";
 import { Botao } from "@/interface/widget/botao/Botao";
@@ -118,7 +119,7 @@ export function DetalheHistoricoPage({
     return (
       <div className="px-5 py-6">
         <EstadoVazio
-          icone="listaVerificacao"
+          emoji="🔍"
           titulo="Registro não encontrado"
           descricao="Este treino pode ter sido removido do histórico."
           acao={
@@ -135,7 +136,11 @@ export function DetalheHistoricoPage({
     );
   }
 
-  const ficha = fichas.find((item) => item.id === registro.fichaId);
+  // Treino livre não está nos mestres: sintetiza a ficha só para exibir nome e
+  // ícone. Se nem isso, é uma ficha de fato removida.
+  const ficha =
+    fichas.find((item) => item.id === registro.fichaId) ??
+    (ehTreinoLivre(registro.fichaId) ? criarFichaLivre() : undefined);
   const fichaDoResultado: Ficha = ficha ?? {
     id: registro.fichaId,
     nome: "Ficha removida",
@@ -229,9 +234,10 @@ export function DetalheHistoricoPage({
 
       {exerciciosComSeries.length === 0 && registro.cardio.length === 0 ? (
         <EstadoVazio
-          icone="listaVerificacao"
+          emoji="📭"
           titulo="Sem exercícios registrados"
           descricao="Este treino foi finalizado sem nenhum exercício registrado."
+          tamanho="compacto"
         />
       ) : null}
 

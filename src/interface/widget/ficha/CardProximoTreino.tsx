@@ -12,6 +12,9 @@ interface PropriedadesCardProximoTreino {
   ficha: Ficha;
   exerciciosCatalogo: Exercicio[];
   aoIniciarTreino: (fichaId: string) => void;
+  /** Segunda via: começar um treino livre (sem ficha). Quando presente,
+      um rodapé discreto aparece dentro do card, abaixo do CTA principal. */
+  aoIniciarLivre?: () => void;
 }
 
 /**
@@ -29,7 +32,7 @@ export const CardProximoTreino = forwardRef<
   HTMLButtonElement,
   PropriedadesCardProximoTreino
 >(function CardProximoTreino(
-  { ficha, exerciciosCatalogo, aoIniciarTreino },
+  { ficha, exerciciosCatalogo, aoIniciarTreino, aoIniciarLivre },
   ref,
 ) {
   const exerciciosFicha = exerciciosDaFicha(ficha);
@@ -42,7 +45,8 @@ export const CardProximoTreino = forwardRef<
     /* Em telas largas o CTA sai de baixo e vai para o lado: esticado ele
        virava um botão de ~700px, alvo desproporcional para uma ação única.
        Adaptar a composição, não apenas esticar o mesmo layout. */
-    <div className="card-destaque relative rounded-2xl border border-borda p-4">
+    <div className="card-destaque relative overflow-hidden rounded-2xl border border-borda">
+      <div className="relative p-4">
       {/* Só no mobile o ícone fica fora do fluxo, no canto: na linha dos
           chips ele esticava a linha e abria um vão antes do título. No md+
           o canto pertence ao CTA, então o ícone entra no fluxo à esquerda. */}
@@ -114,6 +118,22 @@ export const CardProximoTreino = forwardRef<
           Iniciar treino
         </Botao>
       </div>
+      </div>
+
+      {/* Segunda via — treino livre. Rodapé de largura total, dividido por um
+          fio: mesma leitura no mobile (abaixo do CTA vertical) e no md+ (abaixo
+          da linha horizontal). Secundário ao CTA principal, nunca compete. */}
+      {aoIniciarLivre && (
+        <button
+          type="button"
+          onClick={aoIniciarLivre}
+          className="flex w-full items-center justify-center gap-2 border-t border-borda-suave px-4 py-3 text-sm font-semibold text-texto-secundario transition-colors duration-200 hover:bg-superficie-suave/60 hover:text-texto-primario focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-acento"
+        >
+          <Icone nome="raio" tamanho={15} />
+          ou monte um treino livre
+          <Icone nome="setaDireita" tamanho={14} />
+        </button>
+      )}
     </div>
   );
 });

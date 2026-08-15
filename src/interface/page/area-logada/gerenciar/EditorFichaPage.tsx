@@ -28,7 +28,7 @@ import { CampoNumerico } from "@/interface/widget/formulario/CampoNumerico";
 import { CampoNumeroOpcional } from "@/interface/widget/formulario/CampoNumeroOpcional";
 import { CampoCheck } from "@/interface/widget/formulario/CampoCheck";
 import { SeletorIcone } from "@/interface/widget/formulario/SeletorIcone";
-import { PickerExercicios } from "@/interface/widget/formulario/PickerExercicios";
+import { OverlayAdicionarItem } from "./OverlayAdicionarItem";
 import { Botao } from "@/interface/widget/botao/Botao";
 import { Icone, IconeArrastar } from "@/interface/widget/svg/Icone";
 import {
@@ -54,6 +54,7 @@ import { ModalConfirmacao } from "@/interface/widget/modal/ModalConfirmacao";
 import { useToast } from "@/interface/widget/toast";
 import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
 import { useGuardaSaida } from "./useGuardaSaida";
+import { RodapeEditor } from "./RodapeEditor";
 
 interface PropriedadesEditorFichaPage {
   fichaId?: string;
@@ -134,6 +135,8 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
   const [icone, setIcone] = useState<string | null>(null);
   const [itens, setItens] = useState<ItemFicha[]>([]);
   const [painelAdicionar, setPainelAdicionar] = useState<PainelAdicionar>(null);
+  // Itens escolhidos no overlay que ainda não foram aplicados à ficha ("Concluir").
+  const [itensPendentes, setItensPendentes] = useState<ItemFicha[]>([]);
 
   // Camada de itens (push) e pop-up de ícone
   const [telaItensAberta, setTelaItensAberta] = useState(false);
@@ -239,16 +242,34 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
   // editor. Sentinela duplica o state do React Router pra não confundir a
   // reconciliação dele; "Concluir" também sai via history.back() (abaixo), então
   // a sentinela é sempre consumida — sem vazar entradas no histórico.
+  // O overlay de adicionar empilha a própria sentinela; enquanto ele está
+  // aberto, o back consome a dele e a camada de itens precisa se manter.
+  const painelAdicionarAbertoRef = useRef(false);
+  useEffect(() => {
+    painelAdicionarAbertoRef.current = painelAdicionar !== null;
+  }, [painelAdicionar]);
+
   useEffect(() => {
     if (!telaItensAberta) return;
     window.history.pushState(window.history.state, "");
     const aoVoltarHistorico = () => {
+      if (painelAdicionarAbertoRef.current) return;
       setTelaItensAberta(false);
-      setPainelAdicionar(null);
     };
     window.addEventListener("popstate", aoVoltarHistorico);
     return () => window.removeEventListener("popstate", aoVoltarHistorico);
   }, [telaItensAberta]);
+
+  useEffect(() => {
+    if (painelAdicionar === null) return;
+    window.history.pushState(window.history.state, "");
+    const aoVoltarHistorico = () => {
+      setPainelAdicionar(null);
+      setItensPendentes([]);
+    };
+    window.addEventListener("popstate", aoVoltarHistorico);
+    return () => window.removeEventListener("popstate", aoVoltarHistorico);
+  }, [painelAdicionar]);
 
   const abrirTelaItens = () => setTelaItensAberta(true);
   const fecharTelaItens = () => window.history.back();
@@ -318,6 +339,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
     aoVoltar();
   };
 
+  // O overlay acumula escolhas; só o "Concluir" as aplica à ficha.
   const handleAdicionarExercicio = (exercicioId: string) => {
     const novoExercicio: ExercicioFicha = {
       exercicioId,
@@ -326,19 +348,38 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
       usaCarga: true,
       descansoSegundos: 60,
     };
-    setItens((itensAtuais) => [...itensAtuais, { tipo: "exercicio", exercicio: novoExercicio }]);
-    setPainelAdicionar(null);
+    setItensPendentes((pendentes) => [
+      ...pendentes,
+      { tipo: "exercicio", exercicio: novoExercicio },
+    ]);
   };
 
   const handleAdicionarCardio = (tipo: TipoCardio) => {
-    setItens((itensAtuais) => [
-      ...itensAtuais,
+    setItensPendentes((pendentes) => [
+      ...pendentes,
       {
         tipo: "cardio",
         cardio: { id: crypto.randomUUID(), tipo, duracaoMinutos: 20, nota: "" },
       },
     ]);
-    setPainelAdicionar(null);
+  };
+
+  const abrirPainelAdicionar = (painel: "exercicio" | "cardio") => {
+    setItensPendentes([]);
+    setPainelAdicionar(painel);
+  };
+
+  /** Descarta o lote pendente. Sai pelo histórico para consumir a sentinela
+      empilhada na abertura — senão sobraria uma entrada engolindo um "voltar". */
+  const fecharPainelAdicionar = () => window.history.back();
+
+  const concluirPainelAdicionar = () => {
+    setItens((itensAtuais) => [...itensAtuais, ...itensPendentes]);
+    window.history.back();
+  };
+
+  const handleRemoverPendente = (index: number) => {
+    setItensPendentes((pendentes) => pendentes.filter((_, i) => i !== index));
   };
 
   const handleRemoverItem = (index: number) => {
@@ -643,24 +684,16 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
           </div>
         </div>
 
-        {/* Footer fixo — ações rápidas ao alcance do polegar */}
-        <div className="shrink-0 px-5 pt-4 pb-[max(var(--safe-bottom),16px)] border-t border-borda bg-superficie/95 backdrop-blur-sm">
-          <div className="max-w-[480px] mx-auto flex gap-3">
-            <Botao
-              variante="secundario"
-              onClick={() => guarda.solicitarSaida(aoVoltar)}
-              className="flex-1"
-            >
-              Fechar
-            </Botao>
-            {/* Enquanto a subtela de itens está aberta por cima, este botão fica
-                escondido atrás dela — não registra como alvo do tutorial, senão
-                o recorte cairia num botão coberto. Volta a valer ao fechar. */}
-            <Botao ref={telaItensAberta ? undefined : alvoSalvar} variante="primario" onClick={handleSalvar} className="flex-1">
-              {editando ? "Salvar" : "Criar Ficha"}
-            </Botao>
-          </div>
-        </div>
+        {/* Footer fixo — ações rápidas ao alcance do polegar.
+            Enquanto a subtela de itens está aberta por cima, o botão primário
+            fica escondido atrás dela — não registra como alvo do tutorial,
+            senão o recorte cairia num botão coberto. Volta a valer ao fechar. */}
+        <RodapeEditor
+          rotuloSalvar={editando ? "Salvar" : "Criar Ficha"}
+          aoSalvar={handleSalvar}
+          aoFechar={() => guarda.solicitarSaida(aoVoltar)}
+          refSalvar={telaItensAberta ? undefined : alvoSalvar}
+        />
 
         {/* ── Camada de itens (push) — o antigo passo 2, como tela dedicada ── */}
         {telaItensAberta && (
@@ -683,80 +716,18 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
             {/* Conteúdo */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <div className="px-5 py-4 pb-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-[13px] text-texto-secundario">
-                    Monte a sequência. A ordem aqui é a ordem da execução.
-                  </p>
-                  {painelAdicionar !== null && (
-                    <Botao
-                      variante="fantasma"
-                      tamanho="compacto"
-                      icone={<Icone nome="fechar" tamanho={16} />}
-                      onClick={() => setPainelAdicionar(null)}
-                    >
-                      Cancelar
-                    </Botao>
-                  )}
-                </div>
+                <p className="text-[13px] text-texto-secundario">
+                  Monte a sequência. A ordem aqui é a ordem da execução.
+                </p>
 
-                {painelAdicionar === "exercicio" ? (
-                  <PickerExercicios
-                    exercicios={todosExercicios}
-                    exercicioIdsSelecionados={itens
-                      .filter((item) => item.tipo === "exercicio")
-                      .map((item) => (item.tipo === "exercicio" ? item.exercicio.exercicioId : ""))}
-                    aoAdicionar={handleAdicionarExercicio}
-                    aoCriarExercicioCustom={() => setModalCriarExercicioAberto(true)}
-                  />
-                ) : painelAdicionar === "cardio" ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-texto-sutil">
-                      Toque para adicionar uma atividade
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {tiposCardio.map((tipo) => (
-                        <button
-                          key={tipo.id}
-                          type="button"
-                          onClick={() => handleAdicionarCardio(tipo.id)}
-                          className="
-                            group flex items-center gap-2.5 px-3 py-2.5 min-h-[52px]
-                            rounded-xl border border-borda bg-superficie text-left
-                            hover:border-acento hover:bg-acento/5
-                            active:scale-[0.98] transition-all duration-150
-                          "
-                        >
-                          <span className="text-xl leading-none shrink-0">
-                            {tipo.emoji}
-                          </span>
-                          <span className="flex-1 min-w-0 text-[13px] font-medium leading-tight text-texto-primario">
-                            {tipo.nome}
-                          </span>
-                          <span
-                            className="
-                              flex h-6 w-6 shrink-0 items-center justify-center
-                              rounded-full bg-superficie-suave text-texto-sutil
-                              transition-colors duration-150
-                              group-hover:bg-acento group-hover:text-texto-invertido
-                            "
-                            aria-hidden="true"
-                          >
-                            <Icone nome="mais" tamanho={14} />
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Ações de adicionar */}
+                <div className="space-y-3">
+                    {/* Ações de adicionar — abrem o overlay de seleção */}
                     <div ref={alvoAdicionarItem} className="grid grid-cols-2 gap-2">
                       <Botao
                         variante="secundario"
                         className="border-dashed"
                         icone={<Icone nome="mais" tamanho={14} />}
-                        onClick={() => setPainelAdicionar("exercicio")}
+                        onClick={() => abrirPainelAdicionar("exercicio")}
                       >
                         Exercício
                       </Botao>
@@ -764,7 +735,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                         variante="secundario"
                         className="border-dashed"
                         icone={<Icone nome="mais" tamanho={14} />}
-                        onClick={() => setPainelAdicionar("cardio")}
+                        onClick={() => abrirPainelAdicionar("cardio")}
                       >
                         Cardio
                       </Botao>
@@ -829,8 +800,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                         </DndContext>
                       </div>
                     )}
-                  </div>
-                )}
+                </div>
               </div>
             </div>
 
@@ -842,6 +812,26 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                 </Botao>
               </div>
             </div>
+
+            {/* Overlay de seleção (exercício ou cardio) */}
+            {painelAdicionar !== null && (
+              <OverlayAdicionarItem
+                tipo={painelAdicionar}
+                exercicios={todosExercicios}
+                tiposCardio={tiposCardio}
+                exercicioIdsIndisponiveis={[...itens, ...itensPendentes]
+                  .filter((item) => item.tipo === "exercicio")
+                  .map((item) => (item.tipo === "exercicio" ? item.exercicio.exercicioId : ""))}
+                pendentes={itensPendentes}
+                rotuloDoItem={rotuloDoItem}
+                aoAdicionarExercicio={handleAdicionarExercicio}
+                aoAdicionarCardio={handleAdicionarCardio}
+                aoRemoverPendente={handleRemoverPendente}
+                aoCriarExercicioCustom={() => setModalCriarExercicioAberto(true)}
+                aoFechar={fecharPainelAdicionar}
+                aoConcluir={concluirPainelAdicionar}
+              />
+            )}
           </div>
         )}
 

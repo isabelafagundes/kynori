@@ -4,7 +4,9 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { Exercicio } from "@/domain/tipos";
+import { Botao } from "@/interface/widget/botao/Botao";
 import { Chip } from "@/interface/widget/chip/Chip";
+import { EstadoVazio } from "@/interface/widget/EstadoVazio";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { Input } from "@/interface/widget/formulario/Input";
 import { useAlvoTutorial } from "@/interface/widget/tutorial/TutorialProvider";
@@ -116,14 +118,26 @@ export function PickerExercicios({
   }
 
   const totalDisponivel = exerciciosFiltrados.length;
-  const buscaAtivaSemResultado = totalDisponivel === 0 && (busca || grupoSelecionado);
+  const buscaAtivaSemResultado = totalDisponivel === 0 && Boolean(busca || grupoSelecionado);
+
+  const limparFiltros = () => {
+    setBusca("");
+    setGrupoSelecionado(null);
+  };
 
   return (
     <div className="flex flex-col gap-3">
       {/* Barra de busca + filtros — fixa ao rolar */}
       <div
         ref={alvoBusca}
-        className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-superficie/95 backdrop-blur-sm space-y-3"
+        /* A faixa opaca acima da barra mascara o conteúdo que passa por baixo
+           ao rolar. Altura = py-4 (16px) dos containers que hospedam o picker;
+           maior que isso ela invade o conteúdo que vem antes na tela. */
+        className="
+          sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 space-y-3 bg-superficie
+          before:absolute before:inset-x-0 before:bottom-full before:h-4
+          before:bg-superficie before:content-['']
+        "
       >
         <Input
           tipo="busca"
@@ -190,7 +204,9 @@ export function PickerExercicios({
           </div>
         )}
 
-        {aoCriarExercicioCustom && (
+        {/* Enquanto o vazio de busca está na tela ele já traz o CTA de criar —
+            manter os dois duplicaria a mesma ação. */}
+        {aoCriarExercicioCustom && !buscaAtivaSemResultado && (
           <button
             type="button"
             onClick={aoCriarExercicioCustom}
@@ -212,28 +228,45 @@ export function PickerExercicios({
 
       {/* Lista de exercícios agrupada */}
       {buscaAtivaSemResultado ? (
-        <div className="px-4 py-10 text-center">
-          <p className="text-sm text-texto-secundario mb-3">
-            Nenhum exercício encontrado.
-          </p>
-          {aoCriarExercicioCustom && (
-            <button
-              type="button"
-              onClick={aoCriarExercicioCustom}
-              className="text-sm text-acento hover:underline font-medium"
-            >
-              Não encontrou? Criar exercício
-            </button>
-          )}
-        </div>
+        <EstadoVazio
+          emoji="🔍"
+          tamanho="compacto"
+          titulo="Nenhum exercício encontrado"
+          descricao={
+            busca
+              ? `Nada corresponde a “${busca}”${grupoSelecionado ? ` em ${grupoSelecionado}` : ""}.`
+              : `Nenhum exercício em ${grupoSelecionado}.`
+          }
+          dica="💡 Tente um termo mais curto"
+          acao={
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Botao variante="secundario" tamanho="compacto" onClick={limparFiltros}>
+                Limpar filtros
+              </Botao>
+              {aoCriarExercicioCustom && (
+                <Botao
+                  variante="primario"
+                  tamanho="compacto"
+                  icone={<Icone nome="mais" tamanho={14} />}
+                  onClick={aoCriarExercicioCustom}
+                >
+                  Criar exercício
+                </Botao>
+              )}
+            </div>
+          }
+        />
       ) : totalDisponivel === 0 ? (
-        <div className="px-4 py-10 text-center">
-          <p className="text-sm text-texto-secundario">
-            {textoVazio ?? (modo === "selecionar"
+        <EstadoVazio
+          emoji={modo === "selecionar" ? "🔁" : "✅"}
+          tamanho="compacto"
+          titulo={modo === "selecionar" ? "Nada para trocar" : "Tudo já adicionado"}
+          descricao={
+            textoVazio ?? (modo === "selecionar"
               ? "Nenhum exercício disponível para esta troca."
-              : "Todos os exercícios já foram adicionados.")}
-          </p>
-        </div>
+              : "Todos os exercícios já foram adicionados.")
+          }
+        />
       ) : (
         <div className="space-y-5">
           {gruposDeResultados.map(({ grupo, lista }) => (

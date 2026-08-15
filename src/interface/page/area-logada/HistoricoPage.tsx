@@ -1,4 +1,5 @@
 import type { Ficha, Programa, RegistroTreino } from "@/domain/tipos";
+import { criarFichaLivre, ehTreinoLivre } from "@/domain/treino-livre";
 import { ItemHistorico } from "@/interface/widget/historico/ItemHistorico";
 import { EstadoVazio } from "@/interface/widget/EstadoVazio";
 import { Icone } from "@/interface/widget/svg/Icone";
@@ -84,7 +85,9 @@ export function HistoricoPage({
                 </h2>
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {grupo.registros.map((registro) => {
-                    const ficha = fichas.find((f) => f.id === registro.fichaId);
+                    const ficha =
+                      fichas.find((f) => f.id === registro.fichaId) ??
+                      (ehTreinoLivre(registro.fichaId) ? criarFichaLivre() : undefined);
                     const atraso = 60 + Math.min(indiceGlobal, 12) * 50;
                     indiceGlobal += 1;
                     return (
@@ -109,9 +112,10 @@ export function HistoricoPage({
       ) : (
         <div className="reveal-up">
         <EstadoVazio
-          icone="listaVerificacao"
-          titulo="Nenhum treino registrado"
-          descricao="Seus treinos concluídos aparecerão aqui."
+          emoji="📓"
+          titulo="Seu diário começa vazio"
+          descricao="Cada treino concluído vira um registro aqui — com carga, séries e tempo."
+          dica="🗓️ Os treinos entram sozinhos quando você finaliza"
           acao={
             <button
               onClick={aoComecarTreinar}

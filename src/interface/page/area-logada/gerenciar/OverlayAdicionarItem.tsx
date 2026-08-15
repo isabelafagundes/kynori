@@ -9,7 +9,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Exercicio, ItemFicha, TipoCardio, TipoCardioDef } from "@/domain/tipos";
-import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { PickerExercicios } from "@/interface/widget/formulario/PickerExercicios";
 
@@ -177,23 +177,23 @@ export function OverlayAdicionarItem({
         {/* Rodapé — Fechar descarta o lote, Concluir aplica */}
         <div className="shrink-0 border-t border-borda-suave px-5 py-4 pb-[max(var(--safe-bottom),16px)] sm:pb-4">
           <div className="flex gap-3">
-            <Botao
+            <BotaoAcao
               variante="secundario"
               className="flex-1"
-              icone={<Icone nome="fechar" tamanho={16} />}
+              icone="fechar"
               onClick={aoFechar}
             >
               Fechar
-            </Botao>
-            <Botao
+            </BotaoAcao>
+            <BotaoAcao
               variante="primario"
               className="flex-1"
-              icone={<Icone nome="check" tamanho={16} />}
+              icone="check"
               onClick={aoConcluir}
               disabled={pendentes.length === 0}
             >
               Concluir{pendentes.length > 0 ? ` (${pendentes.length})` : ""}
-            </Botao>
+            </BotaoAcao>
           </div>
         </div>
       </div>

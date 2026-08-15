@@ -5,7 +5,9 @@ import type { NomeIcone } from "@/domain/tipos";
  * Combina ícones Heroicons (outline 24px) com ícones fitness customizados.
  * viewBox padrão: "0 0 24 24"
  */
-const caminhoIcones: Record<string, { caminhos: string[]; preenchido?: boolean }> = {
+type DefinicaoIcone = { caminhos: string[]; preenchido?: boolean };
+
+const caminhoIcones = {
   /* ── UI / Navegação (Heroicons Outline) ── */
 
   casa: {
@@ -227,7 +229,11 @@ const caminhoIcones: Record<string, { caminhos: string[]; preenchido?: boolean }
     ],
     preenchido: true,
   },
-};
+} satisfies Record<string, DefinicaoIcone>;
+
+/** Nomes válidos deste catálogo — usado por quem exige um ícone (ver BotaoAcao).
+    Diferente de `NomeIcone` do domínio, que cobre só os ícones de ficha. */
+export type NomeIconeUI = keyof typeof caminhoIcones;
 
 interface PropriedadesIcone {
   nome: string;
@@ -236,7 +242,7 @@ interface PropriedadesIcone {
 }
 
 export function Icone({ nome, tamanho = 24, className = "" }: PropriedadesIcone) {
-  const icone = caminhoIcones[nome];
+  const icone: DefinicaoIcone | undefined = caminhoIcones[nome as NomeIconeUI];
 
   if (!icone) {
     return (

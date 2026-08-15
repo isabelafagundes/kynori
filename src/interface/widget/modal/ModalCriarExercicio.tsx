@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react";
 import type { Exercicio } from "@/domain/tipos";
 import { Input } from "@/interface/widget/formulario/Input";
-import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { useToast } from "@/interface/widget/toast";
 
@@ -201,21 +201,23 @@ export function ModalCriarExercicio({
 
         {/* Ações */}
         <div className="flex gap-3 px-5 py-4 border-t border-borda-suave">
-          <Botao
+          <BotaoAcao
             variante="secundario"
             onClick={aoCancelar}
+            icone="fechar"
             className="flex-1"
           >
             Cancelar
-          </Botao>
-          <Botao
+          </BotaoAcao>
+          <BotaoAcao
             variante="primario"
             onClick={handleCriar}
+            icone="check"
             className="flex-1"
             disabled={!nomeTrimado || !grupoParaUsar}
           >
             Criar
-          </Botao>
+          </BotaoAcao>
         </div>
       </div>
     </div>

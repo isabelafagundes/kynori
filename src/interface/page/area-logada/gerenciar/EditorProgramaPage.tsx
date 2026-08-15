@@ -8,6 +8,7 @@ import { exerciciosDaFicha } from "@/domain/ficha";
 import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
 import { Input } from "@/interface/widget/formulario/Input";
 import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { useToast } from "@/interface/widget/toast";
 import { ModalCopiarPrograma } from "@/interface/widget/modal/ModalCopiarPrograma";
@@ -370,6 +371,7 @@ export function EditorProgramaPage({
         titulo="Descartar alterações?"
         descricao="Você fez alterações neste programa que ainda não foram salvas. Se sair agora, elas serão perdidas."
         textoConfirmar="Descartar"
+        iconeConfirmar="lixeira"
         textoCancelar="Continuar editando"
         aoConfirmar={guarda.confirmarSaida}
         aoCancelar={guarda.cancelarSaida}
@@ -469,12 +471,13 @@ export function EditorProgramaPage({
               </button>
             </div>
             <div className="px-5 py-4 border-t border-borda-suave flex justify-end">
-              <Botao
+              <BotaoAcao
                 variante="fantasma"
+                icone="fechar"
                 onClick={() => setModalNovaFicha(false)}
               >
                 Cancelar
-              </Botao>
+              </BotaoAcao>
             </div>
           </div>
         </div>
@@ -539,12 +542,13 @@ export function EditorProgramaPage({
               </div>
             </div>
             <div className="px-5 py-4 border-t border-borda-suave flex justify-end shrink-0">
-              <Botao
+              <BotaoAcao
                 variante="fantasma"
+                icone="fechar"
                 onClick={() => setModalSelecionarFicha(false)}
               >
                 Cancelar
-              </Botao>
+              </BotaoAcao>
             </div>
           </div>
         </div>

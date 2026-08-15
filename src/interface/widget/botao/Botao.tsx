@@ -1,9 +1,9 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
-type VarianteBotao = "primario" | "secundario" | "fantasma";
+type VarianteBotao = "primario" | "secundario" | "fantasma" | "perigo";
 type TamanhoBotao = "normal" | "compacto";
 
-interface PropriedadesBotao extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface PropriedadesBotao extends ButtonHTMLAttributes<HTMLButtonElement> {
   variante?: VarianteBotao;
   tamanho?: TamanhoBotao;
   children: ReactNode;
@@ -18,6 +18,8 @@ const estilosPorVariante: Record<VarianteBotao, string> = {
     "bg-superficie text-texto-primario border border-borda hover:bg-superficie-hover hover:-translate-y-px active:scale-[0.97] active:translate-y-0 shadow-sm hover:shadow-md",
   fantasma:
     "bg-transparent text-texto-secundario hover:bg-superficie-hover hover:text-texto-primario hover:-translate-y-px active:scale-[0.97] active:translate-y-0",
+  perigo:
+    "bg-perigo text-texto-invertido hover:bg-perigo-hover hover:-translate-y-px active:scale-[0.97] active:translate-y-0 shadow-sm hover:shadow-md",
 };
 
 const estilosPorTamanho: Record<TamanhoBotao, string> = {

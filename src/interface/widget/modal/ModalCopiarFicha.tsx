@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { exerciciosDaFicha, temCardio } from "@/domain/ficha";
 import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
-import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { Input } from "@/interface/widget/formulario/Input";
 
@@ -191,21 +191,23 @@ export function ModalCopiarFicha({
 
         {/* Ações */}
         <div className="flex gap-3 px-5 py-4 border-t border-borda-suave shrink-0">
-          <Botao
+          <BotaoAcao
             variante="secundario"
             onClick={aoCancelar}
+            icone="fechar"
             className="flex-1"
           >
             Cancelar
-          </Botao>
-          <Botao
+          </BotaoAcao>
+          <BotaoAcao
             variante="primario"
             onClick={handleCopiar}
+            icone="copiar"
             className="flex-1"
             disabled={!fichaSelecionada}
           >
             Copiar
-          </Botao>
+          </BotaoAcao>
         </div>
       </div>
     </div>

@@ -3,8 +3,7 @@
    ═══════════════════════════════════════════ */
 
 import type { Ref } from "react";
-import { Botao } from "@/interface/widget/botao/Botao";
-import { Icone } from "@/interface/widget/svg/Icone";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 
 interface PropriedadesRodapeEditor {
   /** Rótulo do botão primário — muda entre criar e editar. */
@@ -26,23 +25,23 @@ export function RodapeEditor({
   return (
     <div className="shrink-0 px-5 pt-4 pb-[max(var(--safe-bottom),16px)] border-t border-borda bg-superficie/95 backdrop-blur-sm">
       <div className="max-w-[480px] mx-auto flex gap-3">
-        <Botao
+        <BotaoAcao
           variante="secundario"
           onClick={aoFechar}
-          icone={<Icone nome="fechar" tamanho={16} />}
+          icone="fechar"
           className="flex-1"
         >
           Fechar
-        </Botao>
-        <Botao
+        </BotaoAcao>
+        <BotaoAcao
           ref={refSalvar}
           variante="primario"
           onClick={aoSalvar}
-          icone={<Icone nome="check" tamanho={16} />}
+          icone="check"
           className="flex-1"
         >
           {rotuloSalvar}
-        </Botao>
+        </BotaoAcao>
       </div>
     </div>
   );

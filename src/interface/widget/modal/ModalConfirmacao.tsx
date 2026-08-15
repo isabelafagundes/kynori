@@ -3,8 +3,8 @@
    Componente customizado para confirmações de ações destrutivas
    ═══════════════════════════════════════════ */
 
-import { Botao } from "@/interface/widget/botao/Botao";
-import { Icone } from "@/interface/widget/svg/Icone";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
+import { Icone, type NomeIconeUI } from "@/interface/widget/svg/Icone";
 
 interface ModalConfirmacaoProps {
   aberto: boolean;
@@ -13,6 +13,10 @@ interface ModalConfirmacaoProps {
   textoConfirmar: string;
   textoCancelar?: string;
   variant?: "perigo" | "atencao";
+  /** Sobrescreve o ícone padrão da confirmação (lixeira no perigo, check no
+      atenção) quando a ação pede algo mais específico. */
+  iconeConfirmar?: NomeIconeUI;
+  iconeCancelar?: NomeIconeUI;
   aoConfirmar: () => void;
   aoCancelar: () => void;
 }
@@ -24,6 +28,8 @@ export function ModalConfirmacao({
   textoConfirmar,
   textoCancelar = "Cancelar",
   variant = "perigo",
+  iconeConfirmar,
+  iconeCancelar = "fechar",
   aoConfirmar,
   aoCancelar,
 }: ModalConfirmacaoProps) {
@@ -77,30 +83,22 @@ export function ModalConfirmacao({
 
         {/* Ações */}
         <div className="flex flex-col-reverse gap-3 px-5 py-4 border-t border-borda-suave sm:flex-row">
-          <Botao
+          <BotaoAcao
             variante="secundario"
             onClick={aoCancelar}
+            icone={iconeCancelar}
             className="flex-1 whitespace-nowrap"
           >
             {textoCancelar}
-          </Botao>
-          {variant === "perigo" ? (
-            <button
-              type="button"
-              onClick={aoConfirmar}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-[10px] bg-perigo px-4 py-3 text-sm font-medium text-texto-invertido shadow-sm transition-all duration-200 hover:-translate-y-px hover:bg-perigo-hover hover:shadow-md active:scale-[0.97]"
-            >
-              {textoConfirmar}
-            </button>
-          ) : (
-            <Botao
-              variante="primario"
-              onClick={aoConfirmar}
-              className="flex-1 whitespace-nowrap"
-            >
-              {textoConfirmar}
-            </Botao>
-          )}
+          </BotaoAcao>
+          <BotaoAcao
+            variante={variant === "perigo" ? "perigo" : "primario"}
+            onClick={aoConfirmar}
+            icone={iconeConfirmar ?? (variant === "perigo" ? "lixeira" : "check")}
+            className="flex-1 whitespace-nowrap"
+          >
+            {textoConfirmar}
+          </BotaoAcao>
         </div>
       </div>
     </div>

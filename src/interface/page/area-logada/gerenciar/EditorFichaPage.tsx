@@ -30,6 +30,7 @@ import { CampoCheck } from "@/interface/widget/formulario/CampoCheck";
 import { SeletorIcone } from "@/interface/widget/formulario/SeletorIcone";
 import { OverlayAdicionarItem } from "./OverlayAdicionarItem";
 import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { Icone, IconeArrastar } from "@/interface/widget/svg/Icone";
 import {
   DndContext,
@@ -807,9 +808,9 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
             {/* Footer da camada de itens */}
             <div className="shrink-0 px-5 pt-4 pb-[max(var(--safe-bottom),16px)] border-t border-borda bg-superficie/95 backdrop-blur-sm">
               <div className="max-w-[480px] mx-auto">
-                <Botao variante="primario" onClick={fecharTelaItens} className="w-full">
+                <BotaoAcao variante="primario" icone="check" onClick={fecharTelaItens} className="w-full">
                   Concluir
-                </Botao>
+                </BotaoAcao>
               </div>
             </div>
 
@@ -842,6 +843,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
           titulo="Descartar alterações?"
           descricao="Você fez alterações nesta ficha que ainda não foram salvas. Se sair agora, elas serão perdidas."
           textoConfirmar="Descartar"
+          iconeConfirmar="lixeira"
           textoCancelar="Continuar editando"
           aoConfirmar={guarda.confirmarSaida}
           aoCancelar={guarda.cancelarSaida}
@@ -943,15 +945,17 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                   </div>
                 </div>
                 <div className="flex gap-3 px-5 py-4 border-t border-borda-suave shrink-0">
-                  <Botao
+                  <BotaoAcao
                     variante="secundario"
                     onClick={() => setModalVincularProgramaAberto(false)}
+                    icone="fechar"
                     className="flex-1"
                   >
                     Cancelar
-                  </Botao>
-                  <Botao
+                  </BotaoAcao>
+                  <BotaoAcao
                     variante="primario"
+                    icone="check"
                     className="flex-1"
                     disabled={!programaParaVincularId}
                     onClick={() => {
@@ -963,7 +967,7 @@ export function EditorFichaPage({ fichaId, aoVoltar, programaId }: PropriedadesE
                     }}
                   >
                     Vincular
-                  </Botao>
+                  </BotaoAcao>
                 </div>
               </div>
             </div>,

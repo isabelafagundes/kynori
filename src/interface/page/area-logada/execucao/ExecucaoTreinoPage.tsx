@@ -4,6 +4,7 @@ import { ehTreinoLivre } from "@/domain/treino-livre";
 import { stateManagerRepository } from "@/infrastructure/repo/state/state-manager.repo";
 import { Icone } from "@/interface/widget/svg/Icone";
 import { Botao } from "@/interface/widget/botao/Botao";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { appModule } from "@/interface/configuration/module/app.module";
 import { HeaderExecucao } from "./HeaderExecucao";
 import { ChipsItens } from "./ChipsItens";
@@ -23,7 +24,7 @@ import { OverlayGraficoProgressao } from "./OverlayGraficoProgressao";
 import { OverlayTrocarExercicio } from "./OverlayTrocarExercicio";
 import { OverlayAdicionarExercicio } from "./OverlayAdicionarExercicio";
 import { OverlayPularExercicio } from "./OverlayPularExercicio";
-import { useSessaoTreino } from "./hooks/useSessaoTreino";
+import { useSessaoTreino, type EntradaExercicioAdicionado } from "./hooks/useSessaoTreino";
 import { useTimerDescanso } from "./hooks/useTimerDescanso";
 import { useInterceptarVoltar } from "./hooks/useInterceptarVoltar";
 import { usePreferenciasExecucao } from "@/interface/hook/usePreferenciasExecucao";
@@ -281,19 +282,15 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
     return resultado;
   };
 
-  const adicionarExercicio = (
-    exercicioId: string,
-    configuracao: Parameters<typeof sessao.adicionarExercicioApos>[2]
-  ) => {
-    const resultado = sessao.adicionarExercicioApos(
+  const adicionarExercicios = (entradas: EntradaExercicioAdicionado[]) => {
+    const resultados = sessao.adicionarExerciciosApos(
       sessao.itens.length === 0 ? -1 : sessao.indiceAtual,
-      exercicioId,
-      configuracao
+      entradas
     );
-    if (resultado === "adicionado") {
+    if (resultados.includes("adicionado")) {
       feedbackTatil.impactoMedio();
     }
-    return resultado;
+    return resultados;
   };
 
   const confirmarPularExercicio = () => {
@@ -322,6 +319,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
           progresso={sessao.progresso}
           temExercicioAtual={false}
           exercicioIniciado={false}
+          treinoLivre={treinoLivre}
           aoTrocarExercicio={() => {}}
           aoPularExercicio={() => {}}
           aoAdicionarExercicio={() => setAdicionarExercicioAberto(true)}
@@ -342,17 +340,33 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
                 : "Você pode adicionar outro exercício ou finalizar o treino. A ficha original permanece intacta."}
             </p>
             <div className="mt-6 grid gap-2">
-              <Botao ocuparLarguraTotal onClick={() => setAdicionarExercicioAberto(true)}>
+              <BotaoAcao
+                icone="mais"
+                ocuparLarguraTotal
+                onClick={() => setAdicionarExercicioAberto(true)}
+              >
                 Adicionar exercício
-              </Botao>
+              </BotaoAcao>
+              {/* No livre não há o que finalizar antes do primeiro exercício —
+                  a saída honesta é descartar, e ela fica à vista. */}
               {treinoLivre ? (
-                <Botao variante="secundario" ocuparLarguraTotal onClick={descartarTreino}>
-                  Sair
-                </Botao>
+                <BotaoAcao
+                  icone="lixeira"
+                  variante="secundario"
+                  ocuparLarguraTotal
+                  onClick={descartarTreino}
+                >
+                  Descartar treino
+                </BotaoAcao>
               ) : (
-                <Botao variante="secundario" ocuparLarguraTotal onClick={solicitarFinalizacao}>
+                <BotaoAcao
+                  icone="check"
+                  variante="secundario"
+                  ocuparLarguraTotal
+                  onClick={solicitarFinalizacao}
+                >
                   Finalizar treino
-                </Botao>
+                </BotaoAcao>
               )}
             </div>
           </div>
@@ -361,7 +375,9 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
           <OverlayAdicionarExercicio
             exercicios={catalogo}
             exercicioIdsIndisponiveis={[]}
-            aoAdicionar={adicionarExercicio}
+            treinoLivre={treinoLivre}
+            sessaoVazia
+            aoAdicionar={adicionarExercicios}
             aoFechar={() => setAdicionarExercicioAberto(false)}
           />
         ) : null}
@@ -414,6 +430,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
         progresso={sessao.progresso}
         temExercicioAtual={exercicioAtual !== undefined}
         exercicioIniciado={(exercicioAtual?.concluidas.size ?? 0) > 0}
+        treinoLivre={treinoLivre}
         aoTrocarExercicio={() => setTrocarExercicioAberto(true)}
         aoPularExercicio={() => setPularExercicioAberto(true)}
         aoAdicionarExercicio={() => setAdicionarExercicioAberto(true)}
@@ -435,6 +452,7 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
             catalogo={catalogo}
             tiposCardio={tiposCardio}
             aoIrPara={sessao.irPara}
+            aoAdicionarExercicio={() => setAdicionarExercicioAberto(true)}
           />
 
           <div className="flex min-h-0 flex-1">
@@ -455,7 +473,9 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
                     Substitui {exercicioPlanejadoCatalogo.nome} somente hoje
                   </p>
                 ) : null}
-                {exercicioAtual?.origem === "adicionado" ? (
+                {/* No livre todo exercício é "adicionado" — o selo não
+                    distinguiria nada e só faria ruído. */}
+                {exercicioAtual?.origem === "adicionado" && !treinoLivre ? (
                   <p className="mt-1 inline-flex rounded-full bg-acento-suave px-2.5 py-1 text-xs text-texto-secundario">
                     Adicionado somente hoje
                   </p>
@@ -652,7 +672,8 @@ export function ExecucaoTreinoPage({ ficha, historico, aoVoltar }: ExecucaoTrein
           exercicios={catalogo}
           exercicioIdsIndisponiveis={exercicioIdsIndisponiveis}
           grupoInicial={grupoMuscular}
-          aoAdicionar={adicionarExercicio}
+          treinoLivre={treinoLivre}
+          aoAdicionar={adicionarExercicios}
           aoFechar={() => setAdicionarExercicioAberto(false)}
         />
       ) : null}

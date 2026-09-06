@@ -95,6 +95,12 @@ export type ResultadoTrocaExercicio =
 
 export type ResultadoAdicionarExercicio = "adicionado" | "duplicado" | "invalido";
 
+/** Um exercício da fila de adição, já com a configuração que vai valer hoje. */
+export interface EntradaExercicioAdicionado {
+  exercicioId: string;
+  configuracao: ConfiguracaoExercicioSessao;
+}
+
 export interface AlteracaoPularExercicio {
   modo: "removido" | "interrompido";
   indice: number;
@@ -584,55 +590,71 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
     [itens, trocarExercicio]
   );
 
+  /** Insere a fila inteira numa única atualização de estado. Em chamadas
+      sequenciais o `itens` lido aqui ficaria defasado e a ordem sairia
+      invertida — por isso a versão de um item só delega para esta. */
+  const adicionarExerciciosApos = useCallback(
+    (
+      indiceItem: number,
+      entradas: EntradaExercicioAdicionado[]
+    ): ResultadoAdicionarExercicio[] => {
+      const indiceValido =
+        itens.length === 0 ? indiceItem === -1 : indiceItem >= 0 && indiceItem < itens.length;
+      if (!indiceValido) return entradas.map(() => "invalido");
+
+      const jaNaSessao = new Set(
+        itens.flatMap((item) => (item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []))
+      );
+      const novos: Extract<SessaoItem, { tipo: "exercicio" }>[] = [];
+      const resultados = entradas.map(({ exercicioId, configuracao }) => {
+        const configuracaoValida =
+          Number.isFinite(configuracao.series) &&
+          configuracao.series > 0 &&
+          Number.isFinite(configuracao.repeticoes) &&
+          configuracao.repeticoes > 0 &&
+          Number.isFinite(configuracao.descansoSegundos) &&
+          configuracao.descansoSegundos >= 0;
+        if (!exercicioId || !configuracaoValida) return "invalido" as const;
+        if (jaNaSessao.has(exercicioId)) return "duplicado" as const;
+
+        jaNaSessao.add(exercicioId);
+        novos.push({
+          sessaoItemId: crypto.randomUUID(),
+          tipo: "exercicio",
+          exercicio: {
+            exercicioId,
+            exercicioPlanejadoId: undefined,
+            origem: "adicionado",
+            configuracao: { ...configuracao },
+            series: criarSeriesPreenchidas(configuracao.series, configuracao.repeticoes),
+            nota: "",
+            concluidas: new Set<number>(),
+            visitado: false,
+          },
+        });
+        return "adicionado" as const;
+      });
+
+      if (novos.length > 0) {
+        setItens((atuais) => {
+          const proximos = clonarItens(atuais);
+          proximos.splice(indiceItem + 1, 0, ...novos);
+          return proximos;
+        });
+      }
+      return resultados;
+    },
+    [itens]
+  );
+
   const adicionarExercicioApos = useCallback(
     (
       indiceItem: number,
       exercicioId: string,
       configuracao: ConfiguracaoExercicioSessao
-    ): ResultadoAdicionarExercicio => {
-      const configuracaoValida =
-        Number.isFinite(configuracao.series) &&
-        configuracao.series > 0 &&
-        Number.isFinite(configuracao.repeticoes) &&
-        configuracao.repeticoes > 0 &&
-        Number.isFinite(configuracao.descansoSegundos) &&
-        configuracao.descansoSegundos >= 0;
-      const indiceValido =
-        itens.length === 0 ? indiceItem === -1 : indiceItem >= 0 && indiceItem < itens.length;
-      if (!exercicioId || !indiceValido || !configuracaoValida) {
-        return "invalido";
-      }
-      if (
-        itens.some(
-          (item) => item.tipo === "exercicio" && item.exercicio.exercicioId === exercicioId
-        )
-      ) {
-        return "duplicado";
-      }
-
-      const novoItem: Extract<SessaoItem, { tipo: "exercicio" }> = {
-        sessaoItemId: crypto.randomUUID(),
-        tipo: "exercicio",
-        exercicio: {
-          exercicioId,
-          exercicioPlanejadoId: undefined,
-          origem: "adicionado",
-          configuracao: { ...configuracao },
-          series: criarSeriesPreenchidas(configuracao.series, configuracao.repeticoes),
-          nota: "",
-          concluidas: new Set<number>(),
-          visitado: false,
-        },
-      };
-
-      setItens((atuais) => {
-        const proximos = clonarItens(atuais);
-        proximos.splice(indiceItem + 1, 0, novoItem);
-        return proximos;
-      });
-      return "adicionado";
-    },
-    [itens]
+    ): ResultadoAdicionarExercicio =>
+      adicionarExerciciosApos(indiceItem, [{ exercicioId, configuracao }])[0] ?? "invalido",
+    [adicionarExerciciosApos]
   );
 
   const removerExercicioAdicionado = useCallback(
@@ -873,6 +895,7 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
       trocarExercicio,
       restaurarExercicioPlanejado,
       adicionarExercicioApos,
+      adicionarExerciciosApos,
       removerExercicioAdicionado,
       pularExercicio,
       desfazerPularExercicio,
@@ -905,6 +928,7 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
       trocarExercicio,
       restaurarExercicioPlanejado,
       adicionarExercicioApos,
+      adicionarExerciciosApos,
       removerExercicioAdicionado,
       pularExercicio,
       desfazerPularExercicio,

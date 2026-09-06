@@ -9,6 +9,18 @@
       "autoPort": true
     },
     {
+      "name": "design-canvas",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "/home/isabela/.claude/skills/design-canvas/serve.py",
+        "tmp/repensar-tela/treino-livre",
+        "--port",
+        "8766",
+        "--no-browser"
+      ],
+      "port": 8766
+    },
+    {
       "name": "vite-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview"],

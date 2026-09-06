@@ -9,11 +9,20 @@ interface PropriedadesChipsItens {
   catalogo: Exercicio[];
   tiposCardio: TipoCardioDef[];
   aoIrPara: (indice: number) => void;
+  /** Fecha a trilha com um chip de adicionar — tira a ação de dentro do kebab
+      e deixa o "+" na mesma linha onde o treino está sendo montado. */
+  aoAdicionarExercicio?: () => void;
 }
 
 /** Navegação por item no mobile: um chip por item da ficha, na ordem definida
     na criação — cardio é só mais um chip. No md+ o rail assume esse papel. */
-export function ChipsItens({ itens, catalogo, tiposCardio, aoIrPara }: PropriedadesChipsItens) {
+export function ChipsItens({
+  itens,
+  catalogo,
+  tiposCardio,
+  aoIrPara,
+  aoAdicionarExercicio,
+}: PropriedadesChipsItens) {
   const chipAtivoRef = useRef<HTMLButtonElement | null>(null);
 
   const indiceAtivo = itens.findIndex((item) => item.estado === "ativo");
@@ -55,6 +64,17 @@ export function ChipsItens({ itens, catalogo, tiposCardio, aoIrPara }: Proprieda
           </button>
         );
       })}
+
+      {aoAdicionarExercicio ? (
+        <button
+          type="button"
+          onClick={aoAdicionarExercicio}
+          className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-borda px-3 py-1.5 text-xs font-medium text-texto-sutil transition-colors duration-150 hover:border-acento hover:text-acento focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-acento"
+        >
+          <Icone nome="mais" tamanho={12} />
+          adicionar
+        </button>
+      ) : null}
     </div>
   );
 }

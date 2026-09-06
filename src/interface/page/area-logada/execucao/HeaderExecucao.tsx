@@ -12,6 +12,8 @@ interface HeaderExecucaoProps {
   progresso: ProgressoSessao;
   temExercicioAtual: boolean;
   exercicioIniciado: boolean;
+  /** Sessão órfã: muda a copy das ações que pressupõem uma ficha. */
+  treinoLivre?: boolean;
   aoTrocarExercicio: () => void;
   aoPularExercicio: () => void;
   aoAdicionarExercicio: () => void;
@@ -31,6 +33,7 @@ export function HeaderExecucao({
   progresso,
   temExercicioAtual,
   exercicioIniciado,
+  treinoLivre = false,
   aoTrocarExercicio,
   aoPularExercicio,
   aoAdicionarExercicio,
@@ -67,7 +70,9 @@ export function HeaderExecucao({
         ]
       : []),
     {
-      label: "Adicionar exercício depois",
+      // No livre não existe um plano do qual "depois" seja o contraponto:
+      // adicionar é o próprio ato de montar o treino.
+      label: treinoLivre ? "Adicionar exercício" : "Adicionar exercício depois",
       icone: "mais",
       onClick: aoAdicionarExercicio,
     },

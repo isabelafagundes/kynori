@@ -1,20 +1,25 @@
 import { useState } from "react";
 import type { Exercicio } from "@/domain/tipos";
 import type { ConfiguracaoExercicioSessao } from "@/application/state/sessao-ativa";
+import { BotaoAcao } from "@/interface/widget/botao/BotaoAcao";
 import { CampoCheck } from "@/interface/widget/formulario/CampoCheck";
 import { CampoNumerico } from "@/interface/widget/formulario/CampoNumerico";
 import { PickerExercicios } from "@/interface/widget/formulario/PickerExercicios";
 import { Icone } from "@/interface/widget/svg/Icone";
-import type { ResultadoAdicionarExercicio } from "./hooks/useSessaoTreino";
+import type {
+  EntradaExercicioAdicionado,
+  ResultadoAdicionarExercicio,
+} from "./hooks/useSessaoTreino";
 
 interface OverlayAdicionarExercicioProps {
   exercicios: Exercicio[];
   exercicioIdsIndisponiveis: string[];
   grupoInicial?: string;
-  aoAdicionar: (
-    exercicioId: string,
-    configuracao: ConfiguracaoExercicioSessao
-  ) => ResultadoAdicionarExercicio;
+  /** Muda a copy: no livre não existe ficha a preservar, o treino é a fila. */
+  treinoLivre?: boolean;
+  /** Sessão ainda sem nenhum item — o botão passa a "Começar com N". */
+  sessaoVazia?: boolean;
+  aoAdicionar: (entradas: EntradaExercicioAdicionado[]) => ResultadoAdicionarExercicio[];
   aoFechar: () => void;
 }
 
@@ -29,27 +34,59 @@ export function OverlayAdicionarExercicio({
   exercicios,
   exercicioIdsIndisponiveis,
   grupoInicial,
+  treinoLivre = false,
+  sessaoVazia = false,
   aoAdicionar,
   aoFechar,
 }: OverlayAdicionarExercicioProps) {
-  const [exercicioSelecionadoId, setExercicioSelecionadoId] = useState<string | null>(null);
-  const [configuracao, setConfiguracao] = useState(CONFIGURACAO_INICIAL);
+  // A fila é a unidade de trabalho: o sheet só fecha quando ela é confirmada.
+  const [fila, setFila] = useState<EntradaExercicioAdicionado[]>([]);
+  const [ajustandoId, setAjustandoId] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
-  const exercicioSelecionado = exercicios.find((item) => item.id === exercicioSelecionadoId);
+
+  const emAjuste = fila.find((entrada) => entrada.exercicioId === ajustandoId);
+  const exercicioEmAjuste = exercicios.find((item) => item.id === ajustandoId);
+  const nomeDe = (id: string) => exercicios.find((item) => item.id === id)?.nome ?? id;
+
+  const enfileirar = (exercicioId: string) => {
+    setMensagem(null);
+    setFila((atual) => [...atual, { exercicioId, configuracao: CONFIGURACAO_INICIAL }]);
+  };
+
+  const desenfileirar = (exercicioId: string) => {
+    setFila((atual) => atual.filter((entrada) => entrada.exercicioId !== exercicioId));
+    if (ajustandoId === exercicioId) setAjustandoId(null);
+  };
+
+  const ajustar = (mudanca: Partial<ConfiguracaoExercicioSessao>) => {
+    setFila((atual) =>
+      atual.map((entrada) =>
+        entrada.exercicioId === ajustandoId
+          ? { ...entrada, configuracao: { ...entrada.configuracao, ...mudanca } }
+          : entrada
+      )
+    );
+  };
 
   const confirmar = () => {
-    if (!exercicioSelecionadoId) return;
-    const resultado = aoAdicionar(exercicioSelecionadoId, configuracao);
-    if (resultado === "adicionado") {
+    if (fila.length === 0) return;
+    const resultados = aoAdicionar(fila);
+    const recusados = fila.filter((_, indice) => resultados[indice] !== "adicionado");
+    if (recusados.length === 0) {
       aoFechar();
       return;
     }
+    setFila(recusados);
     setMensagem(
-      resultado === "duplicado"
-        ? "Este exercício já aparece na execução de hoje."
+      resultados.includes("duplicado")
+        ? "Alguns já estão na execução de hoje. Remova-os da fila para continuar."
         : "Revise a configuração e tente novamente."
     );
   };
+
+  const rotuloConfirmar = sessaoVazia
+    ? `Começar com ${fila.length} exercício${fila.length === 1 ? "" : "s"}`
+    : `Adicionar ${fila.length} exercício${fila.length === 1 ? "" : "s"}`;
 
   return (
     <div
@@ -68,13 +105,18 @@ export function OverlayAdicionarExercicio({
         <div className="flex items-start justify-between gap-4 border-b border-borda-suave px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-texto-sutil">
-              Somente neste treino
+              {treinoLivre ? "Treino livre" : "Somente neste treino"}
             </p>
-            <h2 id="adicionar-exercicio-title" className="mt-0.5 font-display text-xl font-semibold text-texto-primario">
-              {exercicioSelecionado ? "Configurar exercício" : "Adicionar exercício depois"}
+            <h2
+              id="adicionar-exercicio-title"
+              className="mt-0.5 font-display text-xl font-semibold text-texto-primario"
+            >
+              {emAjuste ? "Ajustar exercício" : "Escolher exercícios"}
             </h2>
-            {exercicioSelecionado ? (
-              <p className="mt-1 truncate text-sm text-texto-secundario">{exercicioSelecionado.nome}</p>
+            {emAjuste && exercicioEmAjuste ? (
+              <p className="mt-1 truncate text-sm text-texto-secundario">
+                {exercicioEmAjuste.nome}
+              </p>
             ) : null}
           </div>
           <button
@@ -88,27 +130,16 @@ export function OverlayAdicionarExercicio({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-          {exercicioSelecionado ? (
+          {emAjuste ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-3">
-                <label className="space-y-1.5 text-xs font-medium text-texto-secundario">
-                  <span>Séries</span>
-                  <CampoNumerico
-                    valor={configuracao.series}
-                    aoAlterar={(series) => setConfiguracao((atual) => ({ ...atual, series }))}
-                    minimo={1}
-                    maximo={20}
-                    variante="caixa"
-                    ariaLabel="Séries do exercício adicionado"
-                  />
-                </label>
+              {/* Séries não entram aqui: o card de execução já permite
+                  acrescentar e remover séries no meio do exercício. */}
+              <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5 text-xs font-medium text-texto-secundario">
                   <span>Repetições</span>
                   <CampoNumerico
-                    valor={configuracao.repeticoes}
-                    aoAlterar={(repeticoes) =>
-                      setConfiguracao((atual) => ({ ...atual, repeticoes }))
-                    }
+                    valor={emAjuste.configuracao.repeticoes}
+                    aoAlterar={(repeticoes) => ajustar({ repeticoes })}
                     minimo={1}
                     maximo={100}
                     variante="caixa"
@@ -116,12 +147,10 @@ export function OverlayAdicionarExercicio({
                   />
                 </label>
                 <label className="space-y-1.5 text-xs font-medium text-texto-secundario">
-                  <span>Descanso</span>
+                  <span>Descanso (s)</span>
                   <CampoNumerico
-                    valor={configuracao.descansoSegundos}
-                    aoAlterar={(descansoSegundos) =>
-                      setConfiguracao((atual) => ({ ...atual, descansoSegundos }))
-                    }
+                    valor={emAjuste.configuracao.descansoSegundos}
+                    aoAlterar={(descansoSegundos) => ajustar({ descansoSegundos })}
                     minimo={0}
                     maximo={900}
                     variante="caixa"
@@ -133,54 +162,97 @@ export function OverlayAdicionarExercicio({
               <div className="flex items-center justify-between rounded-xl border border-borda bg-fundo px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-texto-primario">Registrar carga</p>
-                  <p className="mt-0.5 text-xs text-texto-sutil">Exibe o campo de peso nas séries.</p>
+                  <p className="mt-0.5 text-xs text-texto-sutil">
+                    Exibe o campo de peso nas séries.
+                  </p>
                 </div>
                 <CampoCheck
-                  marcado={configuracao.usaCarga}
-                  aoAlterar={(usaCarga) => setConfiguracao((atual) => ({ ...atual, usaCarga }))}
+                  marcado={emAjuste.configuracao.usaCarga}
+                  aoAlterar={(usaCarga) => ajustar({ usaCarga })}
                   ariaLabel="Registrar carga no exercício adicionado"
                 />
               </div>
-
-              {mensagem ? <p className="text-sm text-perigo" role="status">{mensagem}</p> : null}
             </div>
           ) : (
             <PickerExercicios
               exercicios={exercicios}
-              exercicioIdsSelecionados={exercicioIdsIndisponiveis}
-              aoAdicionar={(exercicioId) => {
-                setExercicioSelecionadoId(exercicioId);
-                setMensagem(null);
-              }}
+              /* Some da lista o que já está na sessão e o que já foi
+                 enfileirado — a fila abaixo é quem mostra o segundo grupo. */
+              exercicioIdsSelecionados={[
+                ...exercicioIdsIndisponiveis,
+                ...fila.map((entrada) => entrada.exercicioId),
+              ]}
+              aoAdicionar={enfileirar}
               grupoInicial={grupoInicial}
-              modo="selecionar"
-              textoVazio="Nenhum exercício disponível para adicionar hoje."
+              modo="adicionar"
+              textoVazio={
+                treinoLivre
+                  ? "Todos os exercícios do catálogo já estão neste treino."
+                  : "Nenhum exercício disponível para adicionar hoje."
+              }
             />
           )}
         </div>
 
         <div className="border-t border-borda-suave px-5 py-4 pb-[max(var(--safe-bottom),16px)] sm:pb-4">
-          <p className="mb-3 text-center text-xs text-texto-sutil">
-            A ficha e os próximos treinos permanecem inalterados.
-          </p>
-          {exercicioSelecionado ? (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setExercicioSelecionadoId(null)}
-                className="min-h-11 rounded-xl border border-borda bg-superficie px-4 text-sm font-medium text-texto-primario"
-              >
-                Escolher outro
-              </button>
-              <button
-                type="button"
+          {emAjuste ? (
+            <BotaoAcao icone="check" ocuparLarguraTotal onClick={() => setAjustandoId(null)}>
+              Pronto
+            </BotaoAcao>
+          ) : (
+            <>
+              {fila.length > 0 ? (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {fila.map((entrada) => (
+                    <span
+                      key={entrada.exercicioId}
+                      className="inline-flex items-center gap-1 rounded-full border border-borda bg-fundo py-1 pl-3 pr-1 text-xs font-medium text-texto-primario"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setAjustandoId(entrada.exercicioId)}
+                        className="max-w-[160px] truncate hover:text-acento"
+                        aria-label={`Ajustar ${nomeDe(entrada.exercicioId)}`}
+                      >
+                        {nomeDe(entrada.exercicioId)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => desenfileirar(entrada.exercicioId)}
+                        className="rounded-full p-1 text-texto-sutil hover:bg-superficie-suave hover:text-perigo"
+                        aria-label={`Tirar ${nomeDe(entrada.exercicioId)} da fila`}
+                      >
+                        <Icone nome="fechar" tamanho={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {mensagem ? (
+                <p className="mb-3 text-center text-sm text-perigo" role="status">
+                  {mensagem}
+                </p>
+              ) : (
+                <p className="mb-3 text-center text-xs text-texto-sutil">
+                  {fila.length === 0
+                    ? treinoLivre
+                      ? "Escolha quantos quiser — dá pra continuar adicionando durante o treino."
+                      : "A ficha e os próximos treinos permanecem inalterados."
+                    : `Entram como ${CONFIGURACAO_INICIAL.series}x${CONFIGURACAO_INICIAL.repeticoes} · ${CONFIGURACAO_INICIAL.descansoSegundos}s — toque no nome pra ajustar.`}
+                </p>
+              )}
+
+              <BotaoAcao
+                icone={sessaoVazia ? "reproduzir" : "mais"}
+                ocuparLarguraTotal
+                disabled={fila.length === 0}
                 onClick={confirmar}
-                className="min-h-11 rounded-xl bg-texto-primario px-4 text-sm font-medium text-texto-invertido"
               >
-                Adicionar depois
-              </button>
-            </div>
-          ) : null}
+                {fila.length === 0 ? "Escolha ao menos um exercício" : rotuloConfirmar}
+              </BotaoAcao>
+            </>
+          )}
         </div>
       </div>
     </div>

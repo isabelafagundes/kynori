@@ -496,6 +496,50 @@ describe("useSessaoTreino", () => {
     ).toBeUndefined();
   });
 
+  it("adiciona uma fila inteira preservando a ordem escolhida", async () => {
+    const { result } = renderHook(() => useSessaoTreino(fichaMista()));
+    await aguardarRestauracao();
+
+    const configuracao = { series: 3, repeticoes: 12, usaCarga: true, descansoSegundos: 60 };
+    act(() => {
+      expect(
+        result.current.adicionarExerciciosApos(1, [
+          { exercicioId: "remada-baixa", configuracao },
+          { exercicioId: "rosca", configuracao },
+          { exercicioId: "leg-press", configuracao },
+        ])
+      ).toEqual(["adicionado", "adicionado", "adicionado"]);
+    });
+
+    expect(
+      result.current.itens.flatMap((item) =>
+        item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []
+      )
+    ).toEqual(["supino", "remada-baixa", "rosca", "leg-press", "triceps"]);
+  });
+
+  it("recusa só os duplicados da fila e insere o resto", async () => {
+    const { result } = renderHook(() => useSessaoTreino(fichaMista()));
+    await aguardarRestauracao();
+
+    const configuracao = { series: 3, repeticoes: 12, usaCarga: true, descansoSegundos: 60 };
+    act(() => {
+      expect(
+        result.current.adicionarExerciciosApos(1, [
+          { exercicioId: "remada-baixa", configuracao },
+          { exercicioId: "triceps", configuracao },
+          { exercicioId: "remada-baixa", configuracao },
+        ])
+      ).toEqual(["adicionado", "duplicado", "duplicado"]);
+    });
+
+    expect(
+      result.current.itens.flatMap((item) =>
+        item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []
+      )
+    ).toEqual(["supino", "remada-baixa", "triceps"]);
+  });
+
   it("pula exercício não iniciado e permite desfazer", async () => {
     const { result } = renderHook(() => useSessaoTreino(fichaMista()));
     await aguardarRestauracao();

@@ -26,7 +26,7 @@ Empacotar o Trainify atual (React 19 + Vite + Tailwind) como app nativo **iOS e 
 | Status bar | **`@capacitor/status-bar`** (cor combinando com tema) |
 | Safe area | CSS `env(safe-area-inset-*)` |
 | Build/distribuição | Xcode + Android Studio local; **Ionic Appflow** ou GitHub Actions para CI |
-| OTA updates | **`@capacitor/live-updates`** (opcional, pago no Appflow) ou solução custom |
+| OTA updates | **[`@capgo/capacitor-updater`](https://capgo.app/)** (open-source / cloud; plugs into the CI you already use) — or custom. Avoid new Appflow Live Updates projects (commercial wind-down; existing customers through Dec 31, 2027). |
 
 ---
 
@@ -169,7 +169,7 @@ Polimento que diferencia "site no celular" de "app de verdade". Tudo em CSS/Reac
 
 ### CI/CD (opcional v1, recomendado v2)
 - **GitHub Actions** com Fastlane para automatizar build e upload.
-- **Ionic Appflow** se quiser solução pronta paga.
+- **Ionic Appflow** only if you already have an account (commercial wind-down). Prefer Capgo live updates with GitHub Actions for new work.
 
 ---
 

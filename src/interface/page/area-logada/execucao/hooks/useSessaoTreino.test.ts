@@ -622,15 +622,76 @@ describe("useSessaoTreino", () => {
     primeira.unmount();
 
     const segunda = renderHook(() => useSessaoTreino(fichaMista()));
-    await waitFor(() => expect(segunda.result.current.itens).toHaveLength(4));
-    expect(
-      segunda.result.current.itens.flatMap((item) =>
-        item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []
-      )
-    ).toEqual(["supino", "remada-baixa"]);
+    // A ficha crua também tem 4 itens: esperar só pelo tamanho não espera a
+    // restauração. A sequência é o que distingue o snapshot restaurado.
+    await waitFor(() =>
+      expect(
+        segunda.result.current.itens.flatMap((item) =>
+          item.tipo === "exercicio" ? [item.exercicio.exercicioId] : []
+        )
+      ).toEqual(["supino", "remada-baixa"])
+    );
+    expect(segunda.result.current.itens).toHaveLength(4);
     const adicionado = segunda.result.current.itens[2];
     if (adicionado.tipo !== "exercicio") throw new Error("esperava exercício");
     expect(adicionado.exercicio.origem).toBe("adicionado");
     expect(adicionado.exercicio.configuracao.descansoSegundos).toBe(60);
+  });
+
+  it("não deixa a reemissão da ficha sobrescrever o treino em andamento", async () => {
+    // A rota resolve a ficha com fichas.find(): cada emissão do estado global
+    // devolve um objeto novo. Se a restauração reagisse a essa identidade, o
+    // snapshot salvo voltaria por cima do que já foi registrado na tela.
+    memoria.set(
+      STORAGE_KEYS.SESSAO_ATIVA,
+      JSON.stringify({
+        versao: VERSAO_SESSAO_SALVA,
+        fichaId: "ficha-1",
+        iniciadoEm: "2026-09-06T10:00:00.000Z",
+        indiceAtual: 1,
+        itens: [
+          {
+            sessaoItemId: "item-c1",
+            tipo: "cardio",
+            registro: { cardioId: "c1", tipo: "Esteira", duracaoMinutos: 20, nota: "" },
+            concluido: true,
+            visitado: true,
+          },
+          {
+            sessaoItemId: "item-supino",
+            tipo: "exercicio",
+            exercicioId: "supino",
+            exercicioPlanejadoId: "supino",
+            origem: "planejado",
+            configuracao: { series: 2, repeticoes: 10, usaCarga: true, descansoSegundos: 60 },
+            series: [
+              { serie: 1, repeticoes: 10, carga: 40 },
+              { serie: 2, repeticoes: 10, carga: 40 },
+            ],
+            nota: "",
+            concluidas: [],
+            visitado: true,
+          },
+        ],
+        atualizadoEm: "2026-09-06T10:05:00.000Z",
+      })
+    );
+
+    const { result, rerender } = renderHook(() => useSessaoTreino(fichaMista()));
+    await aguardarRestauracao();
+    expect(result.current.itens).toHaveLength(2);
+
+    act(() => result.current.marcarConcluida(1, 0));
+    expect(result.current.itens[1]).toMatchObject({
+      exercicio: { concluidas: new Set([0]) },
+    });
+
+    // Estado global emite: mesma ficha, objeto novo.
+    rerender();
+    await aguardarRestauracao();
+
+    const exercicio = result.current.itens[1];
+    if (exercicio.tipo !== "exercicio") throw new Error("esperava exercício");
+    expect(exercicio.exercicio.concluidas).toEqual(new Set([0]));
   });
 });

@@ -295,13 +295,25 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
   const encerradaRef = useRef(false); // bloqueia gravação após finalizar/descartar
   const debounceRef = useRef<number | null>(null);
 
+  // A identidade da ficha muda a cada emissão do estado global — a rota resolve
+  // a ficha com fichas.find(), que devolve um objeto novo. Por isso a
+  // restauração é chaveada por ficha.id e lê a ficha por ref: reagir à
+  // identidade faria um snapshot defasado sobrescrever o treino em andamento.
+  const fichaRef = useRef(ficha);
+  // Declarado antes do efeito que lê a ref: no mesmo commit, efeitos rodam na
+  // ordem de declaração, então ela já chega sincronizada lá.
+  useEffect(() => {
+    fichaRef.current = ficha;
+  });
+
   // Restaura o treino em andamento ao montar, se houver um salvo para esta ficha.
   useEffect(() => {
     let ativo = true;
+    const fichaAtual = fichaRef.current;
     void carregarSessaoAtiva().then((salva) => {
       if (!ativo) return;
-      if (salva && !encerradaRef.current && snapshotCompativel(salva, ficha)) {
-        const itensRestaurados = restaurarItens(salva.itens, ficha);
+      if (salva && !encerradaRef.current && snapshotCompativel(salva, fichaAtual)) {
+        const itensRestaurados = restaurarItens(salva.itens, fichaAtual);
         setIniciadoEm(salva.iniciadoEm);
         setIndiceAtual(
           itensRestaurados.length === 0
@@ -315,7 +327,8 @@ export function useSessaoTreino(ficha: Ficha, historico: RegistroTreino[] = []) 
     return () => {
       ativo = false;
     };
-  }, [ficha]);
+    // Trocar de ficha exige sessão nova: a rota remonta a página com key={ficha.id}.
+  }, [ficha.id]);
 
   // Snapshot serializável do estado atual.
   const sessaoSerializada = useMemo<SessaoTreinoSalva>(

@@ -174,6 +174,7 @@ function ExecucaoRota() {
 
   return (
     <ExecucaoTreinoPage
+      key={ficha.id}
       ficha={ficha}
       historico={historico}
       aoVoltar={() => navigate(ROTAS.treinos, { replace: true })}

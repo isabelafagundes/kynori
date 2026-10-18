@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // android/ e ios/ guardam o build nativo (inclusive JS copiado do Capacitor):
+  // lintar aquilo só produz erro de código que não é nosso.
+  globalIgnores(['dist', 'android', 'ios', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -19,5 +21,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+  },
+  {
+    // Testes de e2e rodam no Node e usam a fixture `use()` do Playwright, que a
+    // regra de hooks confunde com o hook `use` do React.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: { globals: globals.node },
+    rules: { 'react-hooks/rules-of-hooks': 'off' },
   },
 ])

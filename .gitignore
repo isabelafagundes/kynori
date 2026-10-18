@@ -30,3 +30,12 @@ tmp/
 # Artefatos de ferramentas/dev
 .playwright-mcp/
 v6-zoom.png
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Scratch de depuracao do Playwright
+e2e/tmp-probe.spec.ts

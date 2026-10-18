@@ -16,5 +16,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.ts',
+    // As specs de e2/ rodam no Playwright, com outro runner e outras APIs.
+    exclude: ['node_modules/**', 'dist/**', 'android/**', 'ios/**', 'e2e/**'],
   },
 })
